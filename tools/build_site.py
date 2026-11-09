@@ -188,6 +188,11 @@ tr:last-child td{border-bottom:none}
 @media(max-width:640px){.foot .fin{grid-template-columns:1fr;gap:16px}.foot .telem{text-align:left}}
 .empty{border:1px dashed var(--rule2);padding:26px;font-size:13px;color:var(--dim);letter-spacing:.06em}
 
+/* fixture warning */
+.warn{border:1px solid var(--ink);padding:14px 18px;margin:26px 0 0;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.warn b{font-weight:700}
+.warn span{color:var(--dim);letter-spacing:.1em}
+
 @media(max-width:640px){
 .entry a{grid-template-columns:1fr}
 .entry .side{border-left:none;border-top:1px solid var(--rule);flex-direction:row;align-items:center;justify-content:space-between;min-width:0;padding:14px 22px}
@@ -208,6 +213,11 @@ class RunView:
     scripts: list[dict] = field(default_factory=list)
     segments: list[dict] = field(default_factory=list)
     gates: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def is_fixture(self) -> bool:
+        """True when this run was built on synthetic transcripts, not a real channel."""
+        return bool(self.run.get("fixture"))
 
 
 def _json(path: Path, fallback=None):
@@ -338,6 +348,13 @@ def header(depth: int = 0, current: str = "") -> str:
 </div></div>"""
 
 
+def warn_banner(fixture: bool) -> str:
+    """Loud notice when the page shows fixture data instead of a real run."""
+    if not fixture:
+        return ""
+    return """<div class="warn"><b>Demo data</b><span>synthetic transcripts shipped with the repo. no channel was ingested, no brief was written by the owner.</span></div>"""
+
+
 def footer(run: dict) -> str:
     """Colophon and the trace."""
     soul = html.escape(str(run.get("soul_version", "-")))
@@ -361,6 +378,8 @@ def render_index(views: list[RunView]) -> str:
     segments = [(v, seg) for v in views for seg in v.segments]
     run = views[0].run if views else {}
     channel = views[0].channel if views else "-"
+
+    fixture = any(view.is_fixture for view in views)
 
     entries = []
     for view, script in scripts:
@@ -407,6 +426,8 @@ def render_index(views: list[RunView]) -> str:
 <div class="line"><span class="sig">&gt;</span><span>{len(scripts)} script assembled, {sum(sum(1 for b in s.get("beats", []) if b.get("citation")) for _v, s in scripts)} claims traced to transcript</span></div>
 <div class="line"><span class="sig">&gt;</span><span>last gate: {html.escape(str(run.get("status", "unknown")))}<span class="cursor"></span></span></div>
 </div>
+
+{warn_banner(fixture)}
 
 <h1>Every sentence<br>traces back to<br>the second <u>it was spoken</u></h1>
 
@@ -494,6 +515,8 @@ def render_script(script: dict, view: RunView) -> str:
 <span>payoff <b>{script.get("payoff_at_s", 0):.0f}s</b></span>
 <span>{html.escape(script["script_id"])}</span>
 </div>
+
+{warn_banner(view.is_fixture)}
 
 <div class="hookbox"><div class="lbl">Hook</div><span class="q">{html.escape(script.get("hook", ""))}</span></div>
 

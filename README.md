@@ -110,6 +110,13 @@ Scripts and their citations are published as a static site:
 
 - https://romiradiansyah99.github.io/narathor/
 
+**The site currently shows demo data, not a real run.** `data/` ships two synthetic
+transcripts (`VID-0001`, `VID-0002`) so the pipeline can be exercised end to end without
+network access, and `briefs/cerdaskan-bangsa.yaml` is a sample brief taken from
+`docs/NARRATIVE.md`. No channel has been ingested and no brief has been supplied by the
+owner. Every page built from a run with `"fixture": true` in `run.json` carries a DEMO DATA
+notice. The first real run replaces it.
+
 Rebuilt after each run:
 
 ```bash
