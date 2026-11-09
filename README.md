@@ -118,7 +118,6 @@ owner. Every page built from a run with `"fixture": true` in `run.json` carries 
 notice. The first real run replaces it.
 
 Rebuilt after each run:
-
 ```bash
 uv run python tools/build_site.py
 git push origin master
@@ -129,9 +128,44 @@ GitHub Pages only serves files. The engine runs on your own machine through the 
 
 ---
 
+## Console
+
+The static site cannot take input. The console can: it is the same engine behind a form,
+served by the FastAPI backend.
+
+```bash
+# 1. a token, so a tunnel is not an open door
+printf '%s' "$(python -c 'import secrets;print(secrets.token_urlsafe(12))')" > .ui_token
+
+# 2. start it
+python tools/run_console.py          # 127.0.0.1:8811
+
+# 3. reach it from anywhere
+cloudflared tunnel --url http://127.0.0.1:8811
+# open the printed https://<name>.trycloudflare.com/?t=<token>
+```
+
+The page has three steps: point at a channel, write the brief, assemble. Long steps run
+as jobs, and the log under the buttons is the job's own log, not a progress bar.
+
+**One known blocker.** YouTube refuses transcripts and media from datacenter IPs:
+`youtube_transcript_api` raises `RequestBlocked` and yt-dlp answers "Sign in to confirm
+you're not a bot". Channel listing still works, which is why the library fills but
+transcripts come back skipped. The fixes, in order of effort:
+
+1. a cookies file from a logged-in browser: `YT_COOKIES_FILE=/path/cookies.txt` (yt-dlp then
+   fetches the subtitle track, no audio download, no Whisper)
+2. a residential proxy: `YT_PROXY=http://user:pass@host:port`
+3. run `uv run narathor ingest` on a normal connection and copy the transcripts over
+
+Whisper is the third fallback and needs `uv sync --extra whisper`; it downloads audio, so it
+hits the same IP block.
+
+---
+
 ## Status
 
-Phases 1–6 complete and verified; phases 7–8 partly done, waiting on a real library and a golden set. `uv run check` is green: ruff, pyright, 76 tests, 80% coverage.
+Phases 1–6 complete and verified; phases 7–8 partly done, waiting on a real library and a golden set. `uv run check` is green: ruff, pyright, 112 tests, 81% coverage.
 
 See [`docs/STATUS.md`](docs/STATUS.md).
 

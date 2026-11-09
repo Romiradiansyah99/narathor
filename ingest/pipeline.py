@@ -62,17 +62,21 @@ def run(
                 report.sources[video.video_id] = existing.source
                 continue
         doc = None
+        reason = ""
         try:
             doc = captions(video)
-        except Exception:
+        except Exception as exc:
+            reason = f"{type(exc).__name__}: {exc}"
             doc = None
         if doc is None and whisper is not None:
             try:
                 doc = whisper(video)
-            except Exception:
+            except Exception as exc:
+                reason = reason or f"{type(exc).__name__}: {exc}"
                 doc = None
         if doc is None:
             report.skipped.append(video.video_id)
+            report.errors[video.video_id] = reason or "no captions and no audio"
             continue
         store.put(doc)
         report.ingested.append(video.video_id)
@@ -82,14 +86,29 @@ def run(
 
 
 def default_fetchers() -> tuple[Fetcher, Fetcher]:
-    """Fetcher produksi: caption YouTube, lalu Whisper atas audio unduhan."""
+    """Fetcher produksi: caption YouTube, subtitle lewat yt-dlp, lalu Whisper."""
     from ingest import captions as captions_mod
+    from ingest import subtitles as subtitles_mod
     from ingest import whisper as whisper_mod
 
     cache_dir = get_settings().output_dir / "_cache" / "audio"
 
     def captions_fetcher(video: Video) -> TranscriptDoc | None:
-        return captions_mod.fetch(video)
+        blocked: Exception | None = None
+        try:
+            doc = captions_mod.fetch(video)
+        except captions_mod.TranscriptBlocked as exc:
+            doc = None
+            blocked = exc
+        if doc is not None:
+            return doc
+        try:
+            doc = subtitles_mod.fetch(video)
+        except Exception:
+            if blocked is not None:
+                raise blocked from None
+            raise
+        return doc
 
     def whisper_fetcher(video: Video) -> TranscriptDoc | None:
         path = captions_mod.fetch_audio(video, cache_dir)

@@ -291,6 +291,46 @@ def ensure_ready(engine: Engine | None = None, data_dir: Path | None = None) -> 
     return seed(eng, data_dir)
 
 
+def save_library(engine: Engine, channel: Channel, videos: list[Video]) -> dict[str, int]:
+    """Write a discovered channel and its videos. Existing rows are left alone."""
+    counts = {"channels": 0, "videos": 0}
+    with engine.begin() as conn:
+        known = conn.execute(
+            select(channels_t.c.channel_id).where(channels_t.c.channel_id == channel.channel_id)
+        ).first()
+        if known is None:
+            conn.execute(
+                channels_t.insert().values(
+                    channel_id=channel.channel_id,
+                    name=channel.name,
+                    handle=channel.handle,
+                    url=channel.url,
+                )
+            )
+            counts["channels"] = 1
+        existing = {row[0] for row in conn.execute(select(videos_t.c.video_id)).all()}
+        for video in videos:
+            if video.video_id in existing:
+                conn.execute(
+                    videos_t.update()
+                    .where(videos_t.c.video_id == video.video_id)
+                    .values(duration_s=video.duration_s, title=video.title, url=video.url)
+                )
+                continue
+            conn.execute(
+                videos_t.insert().values(
+                    video_id=video.video_id,
+                    channel_id=channel.channel_id,
+                    title=video.title,
+                    duration_s=video.duration_s,
+                    published_at=video.published_at.isoformat() if video.published_at else None,
+                    url=video.url,
+                )
+            )
+            counts["videos"] += 1
+    return counts
+
+
 # --------------------------------------------------------------------------- #
 # Query baca
 # --------------------------------------------------------------------------- #

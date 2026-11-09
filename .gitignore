@@ -13,3 +13,9 @@ output/
 .DS_Store
 __pycache__/
 *.sqlite3
+# console runtime
+cookies.txt
+.ui_token
+ui.env
+output/_jobs/
+.coverage

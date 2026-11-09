@@ -32,6 +32,7 @@ class IngestReport:
     cached: list[str] = field(default_factory=list)
     skipped: list[str] = field(default_factory=list)
     sources: dict[str, SourceKind] = field(default_factory=dict)
+    errors: dict[str, str] = field(default_factory=dict)
     elapsed_s: float = 0.0
 
     def as_dict(self) -> dict:
@@ -41,5 +42,6 @@ class IngestReport:
             "cached": self.cached,
             "skipped": self.skipped,
             "sources": {k: str(v) for k, v in self.sources.items()},
+            "errors": self.errors,
             "elapsed_s": round(self.elapsed_s, 3),
         }
