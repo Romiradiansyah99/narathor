@@ -164,6 +164,11 @@ tr:last-child td{border-bottom:none}
 @media(max-width:640px){.foot .fin{grid-template-columns:1fr;gap:16px}.foot .telem{text-align:left}}
 .empty{border:1px dashed var(--rule2);padding:26px;font-size:13px;color:var(--dim);letter-spacing:.06em}
 
+/* fixture warning */
+.warn{border:1px solid var(--ink);padding:14px 18px;margin:26px 0 0;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.warn b{font-weight:700}
+.warn span{color:var(--dim);letter-spacing:.1em}
+
 @media(max-width:640px){
 .entry a{grid-template-columns:1fr}
 .entry .side{border-left:none;border-top:1px solid var(--rule);flex-direction:row;align-items:center;justify-content:space-between;min-width:0;padding:14px 22px}
@@ -189,6 +194,8 @@ tr:last-child td{border-bottom:none}
 <div class="line"><span class="sig">&gt;</span><span>1 script assembled, 3 claims traced to transcript</span></div>
 <div class="line"><span class="sig">&gt;</span><span>last gate: done<span class="cursor"></span></span></div>
 </div>
+
+<div class="warn"><b>Demo data</b><span>synthetic transcripts shipped with the repo. no channel was ingested, no brief was written by the owner.</span></div>
 
 <h1>Every sentence<br>traces back to<br>the second <u>it was spoken</u></h1>
 
