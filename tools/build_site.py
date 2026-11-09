@@ -1,9 +1,10 @@
 """Build the static site from run artefacts. No extra dependencies.
 
-GitHub Pages only serves files, so everything is rendered here and nothing
-runs in the browser. The visual language follows docs/BRAND.md: Fraunces for
-display, Inter for body, JetBrains Mono for timestamps and ids, Cobalt as the
-single accent, panels without borders.
+GitHub Pages only serves files, so everything is rendered here and nothing runs
+in the browser. The visual language is a monochrome terminal: one typeface,
+black on white, box rules, timecodes. See docs/BRAND.md, section "Static
+viewer", which records this surface as a deliberate exception to the product
+palette.
 """
 
 from __future__ import annotations
@@ -19,112 +20,180 @@ ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = ROOT / "output"
 SITE_DIR = ROOT / "site"
 
-FONTS = (
-    "https://fonts.googleapis.com/css2?"
-    "family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400"
-    "&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+FONTS = "https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+
+GATES = (
+    "one thesis",
+    "traceable",
+    "paid",
+    "sounds without sound",
+    "no dead air",
+    "worth six months from now",
+    "distinctive",
 )
 
 STYLE = """
 :root{
---bg:#090B0F; --panel:#15191F; --panel-2:#1B2029;
---ink:#E9EDF3; --fog:#C9D2DD; --muted:#9BA6B6;
---cobalt:#3B63E8; --cobalt-ink:#7E9BFF; --cobalt-dim:#22408F; --steel:#7C9BC7;
---mist:#C8D4E4; --ember:#C2413B;
---display:"Fraunces",Georgia,serif; --body:"Inter",system-ui,sans-serif;
---mono:"JetBrains Mono",ui-monospace,monospace;
+--bg:#000000; --ink:#ffffff; --dim:#ababab; --dim2:#dcdcdc;
+--rule:#333333; --rule2:#575757;
+--mono:"Courier Prime","Courier New",Courier,monospace;
 }
 *{box-sizing:border-box}
-html{-webkit-font-smoothing:antialiased}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--body)}
+html{-webkit-font-smoothing:antialiased;background:var(--bg)}
+body{
+margin:0;background:var(--bg);color:var(--ink);
+font:15px/1.75 var(--mono);letter-spacing:.005em;
+}
+body::after{
+content:"";position:fixed;inset:0;pointer-events:none;z-index:99;
+background:
+repeating-linear-gradient(180deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px),
+radial-gradient(ellipse at 50% 45%,transparent 62%,rgba(0,0,0,.5) 100%);
+}
 a{color:inherit;text-decoration:none}
-.wrap{max-width:1060px;margin:0 auto;padding:0 28px}
-.narrow{max-width:760px;margin-left:0}
+::selection{background:#fff;color:#000}
+.wrap{max-width:940px;margin:0 auto;padding:0 24px}
+.wrap.wide{max-width:1120px}
 
-.top{border-bottom:1px solid rgba(201,210,221,.07);padding:22px 0}
-.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px}
-.brand{font-family:var(--display);font-size:17px;letter-spacing:.01em}
-.brand span{color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.16em;margin-left:12px;text-transform:uppercase}
-.top nav{display:flex;gap:22px;font-size:13px;color:var(--muted)}
-.top nav a:hover{color:var(--ink)}
+/* masthead */
+.mast{padding:26px 0 0;font-size:12px;color:var(--dim)}
+.mast .row{display:flex;justify-content:space-between;gap:16px;align-items:baseline;flex-wrap:wrap}
+.mast .name{color:var(--ink);letter-spacing:.42em;text-transform:uppercase;font-weight:700}
+.mast .tag{letter-spacing:.2em;text-transform:uppercase}
+.mast nav a{letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-left:20px}
+.mast nav a:hover{color:var(--ink)}
+.hr{border-top:1px solid var(--rule);margin:14px 0 0}
 
-.hero{padding:88px 0 56px}
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cobalt-ink);margin:0 0 22px}
-h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,5.2vw,58px);line-height:1.06;letter-spacing:-.02em;margin:0 0 22px;max-width:21ch}
-h1 em{font-style:italic;color:var(--mist)}
-.lede{font-size:17px;line-height:1.6;color:var(--fog);max-width:62ch;margin:0 0 34px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding-top:26px;border-top:1px solid rgba(201,210,221,.08)}
-.stat .n{font-family:var(--mono);font-size:26px;color:var(--ink);letter-spacing:-.03em;line-height:1}
-.stat .n small{font-size:13px;color:var(--muted);letter-spacing:0;margin-left:2px}
-.stat .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+/* terminal block */
+.term{padding:44px 0 10px}
+.line{display:flex;gap:10px;font-size:13.5px;color:var(--dim2);padding:2px 0}
+.line .sig{color:var(--ink);flex:none}
+.line .cmd{color:var(--ink)}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--ink);vertical-align:-2px;animation:b 1.1s steps(1) infinite}
+@keyframes b{0%,49%{opacity:1}50%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cursor{animation:none}}
 
-section{padding:14px 0 54px}
-h2{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:0 0 20px}
+h1{
+font-size:clamp(26px,4.4vw,42px);line-height:1.14;font-weight:700;
+letter-spacing:-.015em;text-transform:uppercase;margin:34px 0 20px;
+}
+h1 u{text-decoration:none;border-bottom:3px solid var(--ink);padding-bottom:2px}
 
-.cards{display:grid;gap:14px}
-.card{display:grid;grid-template-columns:1fr 150px;gap:26px;align-items:center;background:var(--panel);border-radius:14px;padding:26px 0 26px 0;transition:background .18s}
-.card .body{padding-left:0}
-.card:hover{background:var(--panel-2);transform:translateY(-1px)}
-.card .kicker{font-family:var(--mono);font-size:11px;color:#A9B6C8;letter-spacing:.12em;margin-bottom:10px}
-.card h3{font-family:var(--display);font-weight:400;font-size:26px;line-height:1.22;letter-spacing:-.01em;margin:0 0 14px}
-.card .hook{color:var(--fog);font-size:15px;margin:0 0 18px;font-style:italic;font-family:var(--display)}
-.card .meta{display:flex;flex-wrap:wrap;gap:18px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.card .go{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9DB2FF;text-align:right}
-.card .spark{display:flex;gap:4px;justify-content:flex-end;margin-top:12px;width:100%}
-.card .spark i{display:block;flex:1;height:4px;border-radius:2px;background:rgba(201,210,221,.18)}
-.card .spark i.on{background:var(--cobalt)}
-.card .meta b{color:var(--mist);font-weight:500}
+/* ledger */
+.ledger{margin:34px 0 8px;font-size:12.5px;letter-spacing:.08em}
+.ledger .l{display:flex;align-items:baseline;gap:8px;padding:6px 0;text-transform:uppercase;color:var(--dim)}
+.ledger .dots{flex:1;border-bottom:1px dotted var(--rule2);transform:translateY(-3px)}
+.ledger .v{color:var(--ink);font-weight:700}
 
-.lib{width:100%;border-collapse:collapse;font-size:14px}
-.lib th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#AEB9C8;font-weight:500;padding:0 14px 10px 0}
-.lib td{padding:14px 14px 14px 0;border-top:1px solid rgba(201,210,221,.07);vertical-align:top}
-.lib td.id{font-family:var(--mono);font-size:12px;color:var(--steel);white-space:nowrap;width:1%}
-.lib td.fit{width:52px}
-.lib th:nth-child(3){width:96px}
-.lib td.fit{font-family:var(--mono);font-size:12px;white-space:nowrap;width:52px}
-.fit5{color:var(--cobalt-ink)} .fit3{color:var(--mist)} .fit1{color:var(--muted)} .fit0{color:var(--ember)}
-.lib td.q{color:var(--fog)}
+/* section heading */
+.sec{padding:46px 0 0}
+.sec-h{display:flex;align-items:center;gap:12px;font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);margin:0 0 22px}
+.sec-h::before{content:"";height:1px;flex:1;background:var(--rule);order:-1}
+.sec-h span{order:0}
+.sec-h span::before{content:"\\25A0";font-size:9px;vertical-align:2px;margin-right:10px;color:var(--dim2)}
+.sec-h em{color:var(--dim);font-style:normal;letter-spacing:.12em;order:1}
 
-/* script page */
-.back{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:inline-flex;align-items:center;gap:8px;margin-bottom:40px}
+/* script entries */
+.entry{border:1px solid var(--rule);margin-bottom:14px;transition:border-color .15s,background .15s}
+.entry:hover{border-color:var(--rule2);background:#070707}
+.entry a{display:grid;grid-template-columns:1fr auto;gap:0;align-items:stretch}
+.entry .main{padding:22px 24px}
+.entry .kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:0 0 12px}
+.entry h3{font-size:24px;line-height:1.25;font-weight:700;margin:0 0 12px;letter-spacing:-.01em}
+.entry .hook{margin:0 0 16px;color:var(--dim2);font-style:italic;font-size:14.5px}
+.entry .hook::before{content:"\\201C"}
+.entry .hook::after{content:"\\201D"}
+.entry .meta{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.entry .meta b{color:var(--ink);font-weight:700}
+.entry .side{border-left:1px solid var(--rule);padding:22px 20px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-end;min-width:150px;gap:10px}
+.entry .tc{font-size:12px;letter-spacing:.12em;color:var(--dim2)}
+.entry .tc2{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-align:right;line-height:1.7}
+.entry .open{font-size:12px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;white-space:nowrap;margin-top:auto}
+.entry:hover .open{background:var(--ink);color:#000}
+.bmap{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px dotted var(--rule)}
+.bmap .cells{font-size:15px;line-height:1;letter-spacing:.22em;color:var(--ink)}
+.bmap .cap{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.legend{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:14px}
+.legend b{font-weight:400;color:var(--dim2);letter-spacing:.2em}
+
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);font-weight:400;padding:0 14px 10px 0;border-bottom:1px solid var(--rule)}
+td{padding:11px 14px 11px 0;border-bottom:1px dotted var(--rule);vertical-align:top;color:var(--dim2)}
+td.id{white-space:nowrap;color:var(--ink);font-size:12px;letter-spacing:.04em}
+td.fit{white-space:nowrap;letter-spacing:.08em;width:70px}
+td.kind{white-space:nowrap;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+th.len{text-align:right;white-space:nowrap}
+td.len{text-align:right;white-space:nowrap;color:var(--dim);font-size:12px;letter-spacing:.04em}
+tr:last-child td{border-bottom:none}
+
+/* article */
+.back{display:inline-block;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:34px 0 30px}
 .back:hover{color:var(--ink)}
-.s-title{font-family:var(--display);font-weight:400;font-size:clamp(30px,4.4vw,46px);line-height:1.1;letter-spacing:-.02em;margin:0 0 18px}
-.s-meta{display:flex;flex-wrap:wrap;gap:20px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:44px}
-.s-meta b{color:var(--mist);font-weight:500}
+.s-title{font-size:clamp(27px,4.2vw,40px);line-height:1.08;font-weight:700;letter-spacing:-.015em;margin:0 0 18px}
+.s-meta{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:34px;padding-bottom:22px;border-bottom:1px solid var(--rule)}
+.s-meta b{color:var(--ink);font-weight:700}
 
-.hookbox{background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:16px;padding:34px 36px;margin-bottom:52px}
-.hookbox .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--cobalt-ink);margin-bottom:14px}
-.hookbox q{font-family:var(--display);font-style:italic;font-size:clamp(22px,3vw,30px);line-height:1.3;color:var(--ink);quotes:none}
+.hookbox{border-left:3px solid var(--ink);padding:2px 0 2px 20px;margin:0 0 48px}
+.hookbox .lbl{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+.hookbox .q{font-size:clamp(19px,2.6vw,25px);line-height:1.4;font-style:italic}
+.hookbox .q::before{content:"\\201C"}
+.hookbox .q::after{content:"\\201D"}
 
-.timeline{position:relative;margin:0 0 12px;height:5px;background:rgba(201,210,221,.09);border-radius:3px;overflow:hidden}
-.timeline i{position:absolute;top:0;bottom:0;background:var(--cobalt);opacity:.85;border-radius:3px}
-.tick{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:40px;display:flex;justify-content:space-between}
+.ruler{position:relative;height:26px;border-bottom:1px solid var(--rule2)}
+.ruler i{position:absolute;bottom:0;height:18px;background:var(--ink)}
+.ruler i.off{background:transparent;border:1px solid var(--rule2);border-bottom:none}
+.ticks{display:flex;justify-content:space-between;font-size:10.5px;letter-spacing:.12em;color:var(--dim);margin:8px 0 40px}
 
-.beat{display:grid;grid-template-columns:74px 1fr;gap:26px;padding:24px 0;border-top:1px solid rgba(201,210,221,.07)}
-.beat .ts{font-family:var(--mono);font-size:12px;color:var(--cobalt-ink);padding-top:3px}
-.beat .tx{font-size:16.5px;line-height:1.6;color:var(--ink)}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--mist);background:rgba(200,212,228,.07);border-radius:20px;padding:4px 11px}
-.chip.cited{color:var(--cobalt-ink);background:rgba(59,99,232,.12)}
+.meter{display:inline-flex;gap:4px;vertical-align:middle}
+.meter i{display:block;width:9px;height:9px;border:1px solid #787878}
+.meter i.on{background:var(--ink);border-color:var(--ink)}
 
-.cite{background:var(--panel);border-radius:12px;padding:20px 22px;margin-bottom:10px}
-.cite .h{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:10px}
-.cite .vid{color:var(--steel)}
-.cite q{font-family:var(--display);font-style:italic;font-size:16px;line-height:1.5;color:var(--fog);quotes:"\\201C" "\\201D"}
+.beat{display:grid;grid-template-columns:82px 1fr;gap:22px;padding:20px 0;border-top:1px solid var(--rule)}
+.beat:first-of-type{border-top:1px solid var(--rule2)}
+.beat .ts{font-size:12px;color:var(--dim);letter-spacing:.06em;padding-top:2px}
+.beat .tx{font-size:15.5px;line-height:1.7}
+.chips{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.chip::before{content:"["}
+.chip::after{content:"]"}
+.chip.cited{color:var(--ink)}
 
-.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.gate{background:var(--panel);border-radius:10px;padding:14px 16px;font-size:12.5px;color:var(--fog);display:flex;align-items:center;gap:9px}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--cobalt);flex:none}
-.dot.bad{background:var(--ember)}
+.cite{border-top:1px dotted var(--rule);padding:14px 0 14px 0}
+.cite .h{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:16px}
+.cite .h .vid{color:var(--ink)}
+.cite .q{display:block;font-style:italic;color:var(--dim2);font-size:14.5px;line-height:1.65;border-left:1px solid var(--rule2);padding-left:14px}
+.cite .q::before{content:"\\201C"}
+.cite .q::after{content:"\\201D"}
 
-.ulist{list-style:none;padding:0;margin:0}
-.ulist li{padding:11px 0;border-top:1px solid rgba(201,210,221,.07);color:var(--muted);font-size:14px}
+.gates{font-size:13px;letter-spacing:.08em}
+.gates .g{display:flex;gap:12px;padding:8px 0;border-bottom:1px dotted var(--rule);color:var(--dim2);text-transform:uppercase;font-size:11.5px;letter-spacing:.14em}
+.gates .g i{font-style:normal;color:var(--ink);flex:none}
+.gates .g i.bad{color:var(--dim)}
+.gates .g i.bad::after{content:" /"}
 
-.foot{margin-top:30px;font-family:var(--mono);font-size:11.5px;color:#9BA6B6;line-height:1.9}
-.foot .wrap{border-top:1px solid rgba(201,210,221,.09);padding:34px 28px 72px;max-width:1060px}
-.foot p{max-width:72ch;margin:12px 0 0;color:#AEB9C8}
-.foot b{color:var(--mist);font-weight:500}
-.empty{background:var(--panel);border-radius:14px;padding:34px;color:var(--muted);font-size:14px}
+.ulist{list-style:none;padding:0;margin:0;font-size:14px;color:var(--dim2)}
+.ulist li{padding:9px 0 9px 18px;border-bottom:1px dotted var(--rule);position:relative}
+.ulist li::before{content:"-";position:absolute;left:0;color:var(--dim)}
+
+.body-text{font-size:15px;line-height:1.75;color:var(--dim2);margin:0}
+
+/* footer */
+.foot{margin-top:60px;padding:0 0 90px}
+.foot .in{border-top:1px solid var(--rule);padding-top:20px;font-size:11.5px;letter-spacing:.1em;color:var(--dim);line-height:1.9}
+.foot .eof{color:var(--ink);letter-spacing:.4em;margin-bottom:14px}
+.foot .fin{display:grid;grid-template-columns:1fr 280px;gap:40px;align-items:start}
+.foot .disc{margin:0;max-width:56ch;line-height:1.8}
+.foot .telem{margin:0;text-align:right;line-height:2;text-transform:uppercase;font-size:11px;letter-spacing:.14em}
+.foot .telem b{color:var(--dim2);font-weight:400}
+@media(max-width:640px){.foot .fin{grid-template-columns:1fr;gap:16px}.foot .telem{text-align:left}}
+.empty{border:1px dashed var(--rule2);padding:26px;font-size:13px;color:var(--dim);letter-spacing:.06em}
+
+@media(max-width:640px){
+.entry a{grid-template-columns:1fr}
+.entry .side{border-left:none;border-top:1px solid var(--rule);flex-direction:row;align-items:center;justify-content:space-between;min-width:0;padding:14px 22px}
+.beat{grid-template-columns:1fr;gap:4px}
+.ledger{font-size:11.5px}
+}
 """
 
 
@@ -202,7 +271,40 @@ def collect(output_dir: Path = OUTPUT_DIR) -> list[RunView]:
     return views
 
 
-def page(title: str, body: str, depth: int = 0) -> str:
+def timecode(seconds: float) -> str:
+    """Format seconds as HH:MM:SS, the way a playback deck would show it."""
+    total = round(seconds)
+    return f"{total // 3600:02d}:{(total % 3600) // 60:02d}:{total % 60:02d}"
+
+
+def meter(beats: list[dict]) -> str:
+    """One square per beat, filled when the beat carries a citation."""
+    cells = "".join('<i class="on"></i>' if b.get("citation") else "<i></i>" for b in beats)
+    return f'<span class="meter">{cells}</span>'
+
+
+def fitmeter(fit: int) -> str:
+    """Five-step brand-fit meter, left filled."""
+    cells = "".join('<i class="on"></i>' if i < fit else "<i></i>" for i in range(5))
+    return f'<span class="meter">{cells}</span>'
+
+
+def ruler(beats: list[dict], total: float) -> str:
+    """Timeline segments, one per beat, solid when cited."""
+    if total <= 0:
+        return ""
+    marks = []
+    for index, beat in enumerate(beats):
+        start = beat.get("at_s", 0)
+        end = beats[index + 1].get("at_s", total) if index + 1 < len(beats) else total
+        left = (start / total) * 100
+        width = max(((end - start) / total) * 100, 0.7)
+        cls = "" if beat.get("citation") else ' class="off"'
+        marks.append(f'<i{cls} style="left:{left:.3f}%;width:calc({width:.3f}% - 2px)"></i>')
+    return "".join(marks)
+
+
+def page(title: str, body: str) -> str:
     """Wrap a page body with document head, fonts, and style."""
     return f"""<!doctype html>
 <html lang="en">
@@ -210,6 +312,7 @@ def page(title: str, body: str, depth: int = 0) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{html.escape(title)}</title>
+<meta name="description" content="Narathor — short-script assembly with every claim traced to the second it was spoken.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="{FONTS}" rel="stylesheet">
@@ -222,105 +325,125 @@ def page(title: str, body: str, depth: int = 0) -> str:
 """
 
 
-def header(depth: int = 0) -> str:
-    """Site header."""
+def header(depth: int = 0, current: str = "") -> str:
+    """Masthead, styled as a terminal title bar."""
     root = "../" * depth
-    return f"""<div class="top"><div class="wrap">
-<a class="brand" href="{root}index.html">Narathor<span>short-script assembly</span></a>
-<nav><a href="{root}index.html">Scripts</a><a href="{root}index.html#library">Library</a></nav>
+    return f"""<div class="mast"><div class="wrap wide">
+<div class="row">
+<span class="name">Narathor</span>
+<span class="tag">Short-script assembly</span>
+<nav><a href="{root}index.html">Index</a><a href="{root}index.html#library">Library</a></nav>
+</div>
+<div class="hr"></div>
 </div></div>"""
 
 
 def footer(run: dict) -> str:
-    """Site footer with the trace."""
+    """Colophon and the trace."""
     soul = html.escape(str(run.get("soul_version", "-")))
     prompt = html.escape(str(run.get("prompt_version", "-")))
     models = run.get("models") or {}
-    writer = html.escape(str(models.get("writer", "-")))
+    writer_raw = str(models.get("writer", "-"))
+    writer = html.escape(writer_raw.rsplit("/", 1)[-1])
     return f"""<div class="foot"><div class="wrap">
-<b>SOUL</b> v{soul} &nbsp;·&nbsp; <b>prompt</b> {prompt} &nbsp;·&nbsp; <b>writer</b> {writer}
-<p>Every claim is matched against the source transcript before it is stored. A quote that is not there is rejected, not warned.</p>
-</div></div>"""
+<div class="in">
+<div class="eof">EOF</div>
+<div class="fin">
+<p class="disc">Every claim is matched against the source transcript before it is stored. A quote that is not there is rejected, not warned.</p>
+<p class="telem"><b>soul</b> v{soul}<br><b>prompt</b> {prompt}<br><b>writer</b> {writer}</p>
+</div>
+</div></div></div>"""
 
 
 def render_index(views: list[RunView]) -> str:
-    """Front page: scripts, then the segment library."""
+    """Front page: session opener, ledger, scripts, segment library."""
     scripts = [(v, s) for v in views for s in v.scripts]
     segments = [(v, seg) for v in views for seg in v.segments]
     run = views[0].run if views else {}
-    cards = []
+    channel = views[0].channel if views else "-"
+
+    entries = []
     for view, script in scripts:
         beats = script.get("beats", [])
         claims = sum(1 for beat in beats if beat.get("is_claim"))
-        spark = "".join(
-            f'<i class="{"on" if beat.get("citation") else ""}" ></i>'
-            for beat in beats
-        )
-        cards.append(
-            f"""<a class="card" href="scripts/{html.escape(script['script_id'])}.html">
-<div class="body">
-<p class="kicker">{html.escape(view.narrative)} &nbsp;/&nbsp; {html.escape(view.channel)}</p>
-<h3>{html.escape(script.get('title') or script['script_id'])}</h3>
-<p class="hook">&ldquo;{html.escape(script.get('hook', ''))}&rdquo;</p>
-<p class="meta"><span><b>{len(beats)}</b> beats</span>
-<span><b>{claims}</b> cited</span>
-<span>payoff <b>{script.get('payoff_at_s', 0):.0f}s</b></span>
-<span>target <b>{script.get('target_duration_s', 0)}s</b></span></p>
+        total = max([beat.get("at_s", 0) for beat in beats] + [script.get("target_duration_s", 1)])
+        bar = meter(beats)
+        entries.append(
+            f"""<article class="entry"><a href="scripts/{html.escape(script["script_id"])}.html">
+<div class="main">
+<p class="kicker">{html.escape(view.narrative)} / {html.escape(view.channel)} / {html.escape(script.get("combo_id", ""))}</p>
+<h3>{html.escape(script.get("title") or script["script_id"])}</h3>
+<p class="hook">{html.escape(script.get("hook", ""))}</p>
+<p class="meta"><span>beats <b>{len(beats)}</b></span>
+<span>cited <b>{claims}</b></span>
+<span>payoff <b>{script.get("payoff_at_s", 0):.0f}s</b></span>
+<span>target <b>{script.get("target_duration_s", 0)}s</b></span></p>
+<div class="bmap"><span class="cells">{bar}</span><span class="cap">beat map &middot; solid = cited</span></div>
 </div>
-<div><div class="go">Read &rarr;</div><div class="spark">{spark}</div></div>
-</a>"""
+<div class="side">
+<span class="tc">{timecode(total)}</span>
+<span class="tc2">{len(beats)} beats<br>{claims} cited</span>
+<span class="open">read &rarr;</span>
+</div>
+</a></article>"""
         )
+
     rows = []
     for _view, seg in segments:
         rows.append(
             f"""<tr><td class="id">{html.escape(seg["segment_id"])}</td>
-<td class="fit fit{seg["fit"]}">{seg["fit"]}</td>
-<td class="id">{html.escape(seg["kind"])}</td>
-<td class="q">{html.escape(seg["quote"][:150])}</td></tr>"""
+<td class="fit">{fitmeter(seg["fit"])}</td>
+<td class="kind">{html.escape(seg["kind"])}</td>
+<td>{html.escape(seg["quote"][:160])}</td>
+<td class="len">{seg["t1"] - seg["t0"]:.0f}s</td></tr>"""
         )
+
     body = f"""{header()}
 <div class="wrap">
-<div class="hero">
-<p class="eyebrow">Compiler, not generator</p>
-<h1>Every sentence traces back to <em>the second it was spoken</em>.</h1>
-<p class="lede">Narathor indexes the video library of one channel, combines segments from different
-videos into a single thesis, writes the full short script, and refuses to store a claim it cannot
-trace to the transcript.</p>
-<div class="stats">
-<div class="stat"><div class="n">{len(scripts)}</div><div class="l">script{"" if len(scripts) == 1 else "s"}</div></div>
-<div class="stat"><div class="n">{len(segments)}</div><div class="l">indexed segments</div></div>
-<div class="stat"><div class="n">{len(views)}</div><div class="l">run{"" if len(views) == 1 else "s"}</div></div>
-<div class="stat"><div class="n">{html.escape(str(run.get("soul_version", "-")))}</div><div class="l">constitution version</div></div>
-</div>
+
+<div class="term">
+<div class="line"><span class="sig">$</span><span class="cmd">narathor report --channel {html.escape(channel)}</span></div>
+<div class="line"><span class="sig">&gt;</span><span>{len(segments)} segments indexed from the library</span></div>
+<div class="line"><span class="sig">&gt;</span><span>{len(scripts)} script assembled, {sum(sum(1 for b in s.get("beats", []) if b.get("citation")) for _v, s in scripts)} claims traced to transcript</span></div>
+<div class="line"><span class="sig">&gt;</span><span>last gate: {html.escape(str(run.get("status", "unknown")))}<span class="cursor"></span></span></div>
 </div>
 
-<section>
-<h2>Scripts</h2>
-<div class="cards">{"".join(cards) if cards else '<div class="empty">No scripts yet.</div>'}</div>
-</section>
+<h1>Every sentence<br>traces back to<br>the second <u>it was spoken</u></h1>
 
-<section id="library">
-<h2>Segment library</h2>
-<table class="lib">
-<thead><tr><th>Segment</th><th>Fit</th><th>Kind</th><th>Key quote</th></tr></thead>
-<tbody>{"".join(rows) if rows else '<tr><td colspan="4" class="q">Nothing indexed yet.</td></tr>'}</tbody>
+<div class="ledger">
+<div class="l"><span>scripts</span><span class="dots"></span><span class="v">{len(scripts)}</span></div>
+<div class="l"><span>indexed segments</span><span class="dots"></span><span class="v">{len(segments)}</span></div>
+<div class="l"><span>runs</span><span class="dots"></span><span class="v">{len(views)}</span></div>
+<div class="l"><span>constitution</span><span class="dots"></span><span class="v">v{html.escape(str(run.get("soul_version", "-")))}</span></div>
+</div>
+
+<div class="sec">
+<div class="sec-h"><span>Scripts</span><em>{len(scripts):02d}</em></div>
+{"".join(entries) if entries else '<div class="empty">-- no scripts assembled --</div>'}
+</div>
+
+<div class="sec" id="library">
+<div class="sec-h"><span>Segment library</span><em>{len(segments):02d}</em></div>
+<table>
+<thead><tr><th>Segment</th><th>Fit</th><th>Kind</th><th>Key quote</th><th class="len">Len</th></tr></thead>
+<tbody>{"".join(rows) if rows else '<tr><td colspan="5">-- nothing indexed --</td></tr>'}</tbody>
 </table>
-</section>
+<p class="legend">fit scale &nbsp; {fitmeter(5)} strong &nbsp; {fitmeter(1)} weak &nbsp; / five steps, left-filled</p>
+</div>
+
 </div>
 {footer(run)}"""
     return page("Narathor", body)
 
 
 def render_script(script: dict, view: RunView) -> str:
-    """One script: hook, beats over a timeline, citations, gates, discards."""
+    """One script: hook, beats over a ruler, citations, gates, discards."""
     beats = script.get("beats", [])
-    total = max([beat.get("at_s", 0) for beat in beats] + [1]) + 3
-    bars = []
-    step = total / max(len(beats), 1)
-    for beat in beats:
-        left = (beat.get("at_s", 0) / total) * 100
-        width = (step / total) * 100 * 0.82
-        bars.append(f'<i style="left:{left:.2f}%;width:{width:.2f}%"></i>')
+    total = max(
+        [beat.get("at_s", 0) for beat in beats] + [float(script.get("target_duration_s", 1))]
+    )
+    ruler_bar = ruler(beats, total)
+
     beat_html = []
     for beat in beats:
         citation = beat.get("citation")
@@ -328,76 +451,77 @@ def render_script(script: dict, view: RunView) -> str:
         if citation:
             chips.append(
                 f'<span class="chip cited">{html.escape(citation["video_id"])} '
-                f"{citation['t0']:.1f}&ndash;{citation['t1']:.1f}s</span>"
+                f"{citation['t0']:.1f}-{citation['t1']:.1f}s</span>"
             )
         if beat.get("overlay"):
             chips.append(f'<span class="chip">{html.escape(beat["overlay"])}</span>')
         beat_html.append(
-            f"""<div class="beat"><div class="ts">{beat.get("at_s", 0):.1f}s</div>
+            f"""<div class="beat"><div class="ts">{timecode(beat.get("at_s", 0))}</div>
 <div><div class="tx">{html.escape(beat.get("text", ""))}</div>
 <div class="chips">{"".join(chips)}</div></div></div>"""
         )
+
     cites = [
         f"""<div class="cite"><div class="h"><span class="vid">{html.escape(b["citation"]["video_id"])}</span>
-<span>{b["citation"]["t0"]:.1f} &ndash; {b["citation"]["t1"]:.1f}s</span>
-<span>beat at {b.get("at_s", 0):.1f}s</span></div>
-<q>{html.escape(b["citation"]["quote"])}</q></div>"""
+<span>{b["citation"]["t0"]:.1f} - {b["citation"]["t1"]:.1f}s</span>
+<span>beat at {timecode(b.get("at_s", 0))}</span></div>
+<span class="q">{html.escape(b["citation"]["quote"])}</span></div>"""
         for b in beats
         if b.get("citation")
     ]
-    gates = view.gates.get(script["script_id"], "")
+
+    verdict = view.gates.get(script["script_id"], "")
+    failed = "deny" in verdict or "return" in verdict or "fail" in verdict
     gate_items = "".join(
-        f'<div class="gate"><span class="dot{" bad" if "return" in gates or "deny" in gates else ""}"></span>{html.escape(name)}</div>'
-        for name in (
-            "one thesis",
-            "traceable",
-            "paid",
-            "sounds without sound",
-            "no dead air",
-            "worth six months from now",
-            "distinctive",
-        )
+        f'<div class="g"><i class="{"bad" if failed else ""}">{"FAIL" if failed else "OK"}</i><span>{html.escape(name)}</span></div>'
+        for name in GATES
     )
+
     discarded = (
         "".join(f"<li>{html.escape(item)}</li>" for item in script.get("discarded", []))
-        or "<li>Nothing discarded.</li>"
+        or "<li>nothing discarded</li>"
     )
+
     body = f"""{header(1)}
-<div class="wrap narrow">
-<a class="back" href="../index.html">&larr; All scripts</a>
+<div class="wrap">
+<a class="back" href="../index.html">&larr; index</a>
 <h1 class="s-title">{html.escape(script.get("title") or script["script_id"])}</h1>
-<div class="s-meta"><span><b>{html.escape(view.narrative)}</b></span>
+<div class="s-meta">
+<span><b>{html.escape(view.narrative)}</b></span>
 <span>{html.escape(view.channel)}</span>
 <span>{html.escape(script.get("combo_id", ""))}</span>
 <span>target <b>{script.get("target_duration_s", 0)}s</b></span>
-<span>payoff <b>{script.get("payoff_at_s", 0):.0f}s</b></span></div>
+<span>payoff <b>{script.get("payoff_at_s", 0):.0f}s</b></span>
+<span>{html.escape(script["script_id"])}</span>
+</div>
 
-<div class="hookbox"><div class="lbl">Hook</div><q>{html.escape(script.get("hook", ""))}</q></div>
+<div class="hookbox"><div class="lbl">Hook</div><span class="q">{html.escape(script.get("hook", ""))}</span></div>
 
-<div class="timeline">{"".join(bars)}</div>
-<div class="tick"><span>0s</span><span>{total:.0f}s</span></div>
+<div class="ruler">{ruler_bar}</div>
+<div class="ticks"><span>00:00:00</span><span>{timecode(total)}</span></div>
 
 {"".join(beat_html)}
 
-<section>
-<h2>Citations</h2>
-{"".join(cites) if cites else '<div class="empty">No factual claims in this script.</div>'}
-</section>
+<div class="sec">
+<div class="sec-h"><span>Citations</span><em>{len(cites):02d}</em></div>
+{"".join(cites) if cites else '<div class="empty">-- no factual claims in this script --</div>'}
+</div>
 
-<section>
-<h2>Gates</h2>
+<div class="sec">
+<div class="sec-h"><span>Critic gates</span><em>{script["script_id"]}</em></div>
 <div class="gates">{gate_items}</div>
-</section>
+</div>
 
-<section>
-<h2>Thesis</h2>
-<p class="lede">{html.escape(script.get("single_minded_proposition", ""))}</p>
-</section>
+<div class="sec">
+<div class="sec-h"><span>Thesis</span><em>single-minded</em></div>
+<p class="body-text">{html.escape(script.get("single_minded_proposition", ""))}</p>
+</div>
 
-<section>
-<h2>Not used</h2>
+<div class="sec">
+<div class="sec-h"><span>Not used</span><em>{len(script.get("discarded", [])):02d}</em></div>
 <ul class="ulist">{discarded}</ul>
-</section>
+</div>
+
 </div>
 {footer(view.run)}"""
     return page(script.get("title") or script["script_id"], body)

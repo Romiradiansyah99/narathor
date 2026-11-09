@@ -112,3 +112,16 @@ If even one is false, it is not a Narathor output.
 **Narathor.** One word, capitalised, never abbreviated, never hyphenated.
 
 Channel names, theses, and scripts do not use the Narathor name as a brand — Narathor is the tool, not the publisher. What appears in public is the boss's channel.
+
+---
+
+## Static viewer
+
+The GitHub Pages viewer produced by `tools/build_site.py` is a deliberate exception to everything above. It is not product UI. It is a printed readout of the engine, so it takes the form of a machine transcript instead of a dashboard:
+
+- **One typeface** — Courier Prime, regular and bold, italic only for quotations. No second voice.
+- **No colour** — pure black `#000000`, white, and two greys. Nothing else. The palette rule above does not apply here.
+- **Rules instead of panels** — hairlines, dotted leaders, square brackets, and block meters. No rounded corners, no gradients, no shadows.
+- **Machine idiom** — `$` and `>` prefixes, a block cursor, `HH:MM:SS` timecodes, an `EOF` terminator.
+
+A readout that looks like the machine wrote it is more trustworthy than one that looks designed. Keep it that way, and do not import Cobalt into it.
