@@ -1,52 +1,179 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Narathor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0b0d;--panel:#14141a;--line:#2b2b35;--ink:#f2efe9;--muted:#a39d94;--accent:#c9a227}
+:root{
+--bg:#090B0F; --panel:#15191F; --panel-2:#1B2029;
+--ink:#E9EDF3; --fog:#C9D2DD; --muted:#9BA6B6;
+--cobalt:#3B63E8; --cobalt-ink:#7E9BFF; --cobalt-dim:#22408F; --steel:#7C9BC7;
+--mist:#C8D4E4; --ember:#C2413B;
+--display:"Fraunces",Georgia,serif; --body:"Inter",system-ui,sans-serif;
+--mono:"JetBrains Mono",ui-monospace,monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:860px;margin:0 auto;padding:48px 20px 80px}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-h1{font-size:26px;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
-h2{font-size:15px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:36px 0 12px;font-weight:600}
-.sub{color:var(--muted);font-size:14px;margin:0 0 28px}
-.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:0 0 12px;transition:border-color .15s}
-.card:hover{border-color:#3a3a46;text-decoration:none}
-.card .t{color:var(--ink);font-weight:600;font-size:16px;margin:0 0 4px}
-.card .m{color:var(--muted);font-size:13px}
-.hook{font-size:20px;line-height:1.4;margin:0 0 28px;padding:18px 20px;border-left:2px solid var(--accent);background:var(--panel)}
-.beat{display:grid;grid-template-columns:58px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
-.beat:last-child{border-bottom:0}
-.beat .ts{color:var(--accent);font-variant-numeric:tabular-nums;font-size:13px;padding-top:2px}
-.beat .tx{white-space:pre-wrap}
-.ov{display:inline-block;margin-top:6px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:2px 7px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding:8px 10px 8px 0}
-td{border-bottom:1px solid var(--line);padding:9px 10px 9px 0;vertical-align:top}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#d9d4c9}
-.q{color:#cfc9bd}
-ul{padding-left:18px;color:var(--muted)}
-li{margin:4px 0}
-.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+html{-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--body)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1060px;margin:0 auto;padding:0 28px}
+.narrow{max-width:760px;margin-left:0}
+
+.top{border-bottom:1px solid rgba(201,210,221,.07);padding:22px 0}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{font-family:var(--display);font-size:17px;letter-spacing:.01em}
+.brand span{color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.16em;margin-left:12px;text-transform:uppercase}
+.top nav{display:flex;gap:22px;font-size:13px;color:var(--muted)}
+.top nav a:hover{color:var(--ink)}
+
+.hero{padding:88px 0 56px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--cobalt-ink);margin:0 0 22px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,5.2vw,58px);line-height:1.06;letter-spacing:-.02em;margin:0 0 22px;max-width:21ch}
+h1 em{font-style:italic;color:var(--mist)}
+.lede{font-size:17px;line-height:1.6;color:var(--fog);max-width:62ch;margin:0 0 34px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;padding-top:26px;border-top:1px solid rgba(201,210,221,.08)}
+.stat .n{font-family:var(--mono);font-size:26px;color:var(--ink);letter-spacing:-.03em;line-height:1}
+.stat .n small{font-size:13px;color:var(--muted);letter-spacing:0;margin-left:2px}
+.stat .l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+
+section{padding:14px 0 54px}
+h2{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:0 0 20px}
+
+.cards{display:grid;gap:14px}
+.card{display:grid;grid-template-columns:1fr 150px;gap:26px;align-items:center;background:var(--panel);border-radius:14px;padding:26px 0 26px 0;transition:background .18s}
+.card .body{padding-left:0}
+.card:hover{background:var(--panel-2);transform:translateY(-1px)}
+.card .kicker{font-family:var(--mono);font-size:11px;color:#A9B6C8;letter-spacing:.12em;margin-bottom:10px}
+.card h3{font-family:var(--display);font-weight:400;font-size:26px;line-height:1.22;letter-spacing:-.01em;margin:0 0 14px}
+.card .hook{color:var(--fog);font-size:15px;margin:0 0 18px;font-style:italic;font-family:var(--display)}
+.card .meta{display:flex;flex-wrap:wrap;gap:18px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.card .go{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9DB2FF;text-align:right}
+.card .spark{display:flex;gap:4px;justify-content:flex-end;margin-top:12px;width:100%}
+.card .spark i{display:block;flex:1;height:4px;border-radius:2px;background:rgba(201,210,221,.18)}
+.card .spark i.on{background:var(--cobalt)}
+.card .meta b{color:var(--mist);font-weight:500}
+
+.lib{width:100%;border-collapse:collapse;font-size:14px}
+.lib th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#AEB9C8;font-weight:500;padding:0 14px 10px 0}
+.lib td{padding:14px 14px 14px 0;border-top:1px solid rgba(201,210,221,.07);vertical-align:top}
+.lib td.id{font-family:var(--mono);font-size:12px;color:var(--steel);white-space:nowrap;width:1%}
+.lib td.fit{width:52px}
+.lib th:nth-child(3){width:96px}
+.lib td.fit{font-family:var(--mono);font-size:12px;white-space:nowrap;width:52px}
+.fit5{color:var(--cobalt-ink)} .fit3{color:var(--mist)} .fit1{color:var(--muted)} .fit0{color:var(--ember)}
+.lib td.q{color:var(--fog)}
+
+/* script page */
+.back{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:inline-flex;align-items:center;gap:8px;margin-bottom:40px}
+.back:hover{color:var(--ink)}
+.s-title{font-family:var(--display);font-weight:400;font-size:clamp(30px,4.4vw,46px);line-height:1.1;letter-spacing:-.02em;margin:0 0 18px}
+.s-meta{display:flex;flex-wrap:wrap;gap:20px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:44px}
+.s-meta b{color:var(--mist);font-weight:500}
+
+.hookbox{background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:16px;padding:34px 36px;margin-bottom:52px}
+.hookbox .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--cobalt-ink);margin-bottom:14px}
+.hookbox q{font-family:var(--display);font-style:italic;font-size:clamp(22px,3vw,30px);line-height:1.3;color:var(--ink);quotes:none}
+
+.timeline{position:relative;margin:0 0 12px;height:5px;background:rgba(201,210,221,.09);border-radius:3px;overflow:hidden}
+.timeline i{position:absolute;top:0;bottom:0;background:var(--cobalt);opacity:.85;border-radius:3px}
+.tick{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:40px;display:flex;justify-content:space-between}
+
+.beat{display:grid;grid-template-columns:74px 1fr;gap:26px;padding:24px 0;border-top:1px solid rgba(201,210,221,.07)}
+.beat .ts{font-family:var(--mono);font-size:12px;color:var(--cobalt-ink);padding-top:3px}
+.beat .tx{font-size:16.5px;line-height:1.6;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--mist);background:rgba(200,212,228,.07);border-radius:20px;padding:4px 11px}
+.chip.cited{color:var(--cobalt-ink);background:rgba(59,99,232,.12)}
+
+.cite{background:var(--panel);border-radius:12px;padding:20px 22px;margin-bottom:10px}
+.cite .h{display:flex;flex-wrap:wrap;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:10px}
+.cite .vid{color:var(--steel)}
+.cite q{font-family:var(--display);font-style:italic;font-size:16px;line-height:1.5;color:var(--fog);quotes:"\201C" "\201D"}
+
+.gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.gate{background:var(--panel);border-radius:10px;padding:14px 16px;font-size:12.5px;color:var(--fog);display:flex;align-items:center;gap:9px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--cobalt);flex:none}
+.dot.bad{background:var(--ember)}
+
+.ulist{list-style:none;padding:0;margin:0}
+.ulist li{padding:11px 0;border-top:1px solid rgba(201,210,221,.07);color:var(--muted);font-size:14px}
+
+.foot{margin-top:30px;font-family:var(--mono);font-size:11.5px;color:#9BA6B6;line-height:1.9}
+.foot .wrap{border-top:1px solid rgba(201,210,221,.09);padding:34px 28px 72px;max-width:1060px}
+.foot p{max-width:72ch;margin:12px 0 0;color:#AEB9C8}
+.foot b{color:var(--mist);font-weight:500}
+.empty{background:var(--panel);border-radius:14px;padding:34px;color:var(--muted);font-size:14px}
 </style>
 </head>
 <body>
+<div class="top"><div class="wrap">
+<a class="brand" href="index.html">Narathor<span>short-script assembly</span></a>
+<nav><a href="index.html">Scripts</a><a href="index.html#library">Library</a></nav>
+</div></div>
 <div class="wrap">
-<h1>Narathor</h1>
-<p class="sub">1 naskah dari 1 run. Setiap klaim terlacak ke detik sumbernya.</p>
-<h2>Naskah</h2>
-<a class="card" href="scripts/script-combo-000.html">
-<p class="t">Bukan Jumlah, tapi Arah</p>
-<p class="m">cerdaskan-bangsa / Channel_Uji &middot;
-4 beat &middot; 3 klaim bersitasi &middot; payoff 12s</p>
-</a>
-<h2>Run</h2>
-<p class="sub">cerdaskan-bangsa &middot; Channel_Uji &middot; soul v1 &middot; done</p>
-<div class="foot">Narathor. Naskah dengan sitasi per detik. Built on a hash-verified <code>SOUL.md</code>.</div>
+<div class="hero">
+<p class="eyebrow">Compiler, not generator</p>
+<h1>Every sentence traces back to <em>the second it was spoken</em>.</h1>
+<p class="lede">Narathor indexes the video library of one channel, combines segments from different
+videos into a single thesis, writes the full short script, and refuses to store a claim it cannot
+trace to the transcript.</p>
+<div class="stats">
+<div class="stat"><div class="n">1</div><div class="l">script</div></div>
+<div class="stat"><div class="n">6</div><div class="l">indexed segments</div></div>
+<div class="stat"><div class="n">1</div><div class="l">run</div></div>
+<div class="stat"><div class="n">1</div><div class="l">constitution version</div></div>
 </div>
+</div>
+
+<section>
+<h2>Scripts</h2>
+<div class="cards"><a class="card" href="scripts/script-combo-000.html">
+<div class="body">
+<p class="kicker">cerdaskan-bangsa &nbsp;/&nbsp; Channel_Uji</p>
+<h3>Bukan Jumlah, tapi Arah</h3>
+<p class="hook">&ldquo;Bukan soal jumlah.&rdquo;</p>
+<p class="meta"><span><b>4</b> beats</span>
+<span><b>3</b> cited</span>
+<span>payoff <b>12s</b></span>
+<span>target <b>15s</b></span></p>
+</div>
+<div><div class="go">Read &rarr;</div><div class="spark"><i class="on" ></i><i class="on" ></i><i class="on" ></i><i class="" ></i></div></div>
+</a></div>
+</section>
+
+<section id="library">
+<h2>Segment library</h2>
+<table class="lib">
+<thead><tr><th>Segment</th><th>Fit</th><th>Kind</th><th>Key quote</th></tr></thead>
+<tbody><tr><td class="id">VID-0002:14000</td>
+<td class="fit fit5">5</td>
+<td class="id">rebuttal</td>
+<td class="q">Jadi masalah keuangan bukan soal jumlah, tapi ke mana aliran uang pergi</td></tr><tr><td class="id">VID-0001:0</td>
+<td class="fit fit3">3</td>
+<td class="id">thesis</td>
+<td class="q">Jadi gini, masalahnya bukan berapa yang masuk</td></tr><tr><td class="id">VID-0001:4500</td>
+<td class="fit fit3">3</td>
+<td class="id">thesis</td>
+<td class="q">Masalahnya ke mana yang masuk itu pergi</td></tr><tr><td class="id">VID-0001:12000</td>
+<td class="fit fit1">1</td>
+<td class="id">story</td>
+<td class="q">Tiga puluh persen bocor di hal yang tidak kamu ingat</td></tr><tr><td class="id">VID-0002:0</td>
+<td class="fit fit1">1</td>
+<td class="id">story</td>
+<td class="q">Gaji naik dua kali lipat, tabungan tidak bergerak</td></tr><tr><td class="id">VID-0002:5000</td>
+<td class="fit fit1">1</td>
+<td class="id">story</td>
+<td class="q">Penyebabnya pengeluaran ikut naik dengan kecepatan yang sama</td></tr></tbody>
+</table>
+</section>
+</div>
+<div class="foot"><div class="wrap">
+<b>SOUL</b> v1 &nbsp;·&nbsp; <b>prompt</b> v1 &nbsp;·&nbsp; <b>writer</b> deepseek/deepseek-v4.1-flash
+<p>Every claim is matched against the source transcript before it is stored. A quote that is not there is rejected, not warned.</p>
+</div></div>
 </body>
 </html>
