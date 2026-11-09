@@ -115,7 +115,8 @@ Dibangun ulang setelah setiap run:
 
 ```bash
 uv run python tools/build_site.py
-git subtree push --prefix site origin gh-pages
+git push origin master
+# lalu salin isi site/ ke branch gh-pages
 ```
 
 GitHub Pages hanya menyajikan berkas. Mesinnya berjalan di mesin sendiri lewat CLI.
