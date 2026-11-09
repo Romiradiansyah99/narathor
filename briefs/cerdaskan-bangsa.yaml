@@ -1,0 +1,70 @@
+# Contoh konkret. Bukan brief produksi.
+# Salin, ganti, dan beri id baru bila ingin dipakai.
+# Dokumentasi: docs/NARRATIVE.md
+
+id: cerdaskan-bangsa
+title: "Mencerdaskan bangsa lewat atensi yang berguna"
+
+learning_outcome: >
+  Penonton memahami bahwa masalah keuangan pribadi jarang soal besar
+  penghasilan, dan lebih sering soal arah aliran uang. Mereka dapat
+  menyebut satu kebiasaan yang membuat uang bocor.
+
+thesis: >
+  Atensi adalah aset terbatas, dan uang mengikuti arah yang sama.
+  Yang mengubah hasil bukan tambahan pemasukan, tapi perbaikan arah.
+
+audience:
+  primary: "Indonesia, 20-35, bekerja, belum punya dana darurat"
+  literacy_level: menengah
+  pain_points:
+    - "penghasilan naik tapi tabungan tidak bertambah"
+    - "merasa sudah tahu, tapi hasilnya sama"
+    - "mudah terpancing judul yang menjanjikan cara cepat"
+
+values_allowed:
+  - kejujuran_intelektual
+  - kerja_keras_tanpa_shortcut
+  - tanggung_jawab_personal
+  - literasi_finansial_yang_sehat
+
+values_blocked:
+  - janji_kaya_instan
+  - membenci_kelompok
+  - pseudosains
+  - manipulasi_emosi_untuk_engagement
+  - menyalahkan_korban
+  - merendahkan_gaya_hidup_orang
+
+register_level: 2
+
+tone:
+  target: "tegas, jernih, tidak menggurui"
+  avoid:
+    - "menggurui"
+    - "menakut-nakuti"
+    - "memohon perhatian"
+
+seasonal_context:
+  as_of: 2026-11-09
+  period: "Q4 2026"
+  moments:
+    - "akhir tahun fiskal"
+    - "musim bonus"
+  trend_notes: >
+    Audiens sedang banyak membahas efisiensi anggaran akhir tahun.
+    Format "angka dulu, penjelasan kemudian" bekerja baik.
+    Hindari "burn rate"; gunakan "biaya yang bocor".
+  trend_expiry: 2027-02-01
+
+sources:
+  channels:
+    - "https://www.youtube.com/@example"
+  recency_preference: any
+  min_duration_s: 300
+
+output:
+  scripts: 30
+  target_duration_s: 15
+  language: id
+  montages: 0

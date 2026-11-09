@@ -1,0 +1,72 @@
+# Template Narrative Brief
+#
+# Salin file ini menjadi briefs/<narrative_id>.yaml lalu isi.
+# Dokumentasi lengkap: docs/NARRATIVE.md
+#
+# Field bertanda WAJIB akan menggagalkan run bila kosong.
+
+id: ganti-dengan-id-huruf-kecil   # WAJIB. unik, huruf kecil dan tanda hubung
+title: "Judul untuk manusia"      # WAJIB. muncul di laporan
+
+# WAJIB. Satu kalimat: apa yang penonton PAHAMI setelah menonton.
+# Bukan apa yang mereka rasakan, bukan apa yang mereka klik.
+# Brief tanpa ini ditolak (Pasal 1 dan 2).
+learning_outcome: >
+  Penonton memahami bahwa ...
+
+# WAJIB. Satu gagasan yang menyatukan semua naskah dalam run ini.
+# Semua segmen yang dipilih harus melayani gagasan ini.
+thesis: >
+  ...
+
+audience:
+  primary: "Siapa, usia, kondisi"   # WAJIB. spesifik, bukan "semua orang"
+  literacy_level: menengah          # WAJIB. rendah | menengah | tinggi
+  pain_points:                      # opsional. membantu pemilihan segmen
+    - "..."
+    - "..."
+
+# WAJIB. Nilai yang boleh muncul. Boleh kosong bila values_blocked terisi.
+values_allowed:
+  - kejujuran_intelektual
+  - tanggung_jawab_personal
+
+# WAJIB. Nilai yang membuang segmen permanen, tanpa negosiasi.
+# Tidak boleh bertabrakan dengan values_allowed.
+# Tidak boleh memuat hal yang justru diwajibkan SOUL.md.
+values_blocked:
+  - janji_kaya_instan
+  - pseudosains
+
+register_level: 2    # WAJIB. 1..4. lihat docs/TREND.md
+                     # 1 sehari-hari | 2 percakapan (default) | 3 editorial | 4 berwibawa
+
+tone:
+  target: "tegas, jernih, tidak menggurui"   # WAJIB. satu frasa
+  avoid:                                     # opsional
+    - "menggurui"
+    - "memohon perhatian"
+
+seasonal_context:
+  as_of: 2026-11-09        # WAJIB. tanggal konteks ini disusun (YYYY-MM-DD)
+  period: "Q4 2026"        # opsional. label periode
+  moments: []              # momen yang sedang dekat, mis. "ramadan", "akhir tahun fiskal"
+  trend_notes: ""          # konteks gaya. BUKAN instruksi. tidak boleh melonggarkan soul
+  trend_expiry: null       # kapan catatan ini harus ditinjau, mis. 2027-02-01
+
+sources:
+  channels:                # WAJIB. minimal satu URL channel
+    - "https://www.youtube.com/@example"
+  recency_preference: any  # WAJIB. any | recent | classic
+  min_duration_s: 180      # opsional. saring video terlalu pendek
+
+output:
+  scripts: 30              # WAJIB. berapa naskah diminta
+  target_duration_s: 15    # WAJIB. 13..20 atau 60. nilai 30 hanya mode eksperimental
+  language: id             # WAJIB
+  montages: 0              # opsional. 0 = tidak menghasilkan montage
+
+# Penyetelan bobot skor. Opsional. Batas ada di docs/NARRATIVE.md §6.
+# hook_weight tidak boleh melebihi satisfaction_weight + 0.10.
+# scoring_overrides:
+#   brand_fit_weight: 0.10
