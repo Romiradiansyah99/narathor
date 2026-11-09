@@ -105,6 +105,23 @@ Keempatnya bukan kebijakan yang dapat dinegosiasikan. Ketiganya berasal dari `SO
 
 ---
 
+## Situs
+
+Naskah dan sitasinya dipublikasikan sebagai situs statis:
+
+- https://romiradiansyah99.github.io/narathor/
+
+Dibangun ulang setelah setiap run:
+
+```bash
+uv run python tools/build_site.py
+git subtree push --prefix site origin gh-pages
+```
+
+GitHub Pages hanya menyajikan berkas. Mesinnya berjalan di mesin sendiri lewat CLI.
+
+---
+
 ## Status
 
 Fase 0 selesai: dokumen dan konstitusi. Belum ada kode.
