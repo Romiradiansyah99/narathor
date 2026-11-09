@@ -1,106 +1,111 @@
 # Status
 
-Keadaan repo hari ini. Diperbarui setiap fase selesai.
+The state of the repo today. Updated at the end of every phase.
 
 ---
 
-## Ringkasan
+## Summary
 
-Fase 1 sampai 6 selesai dan terverifikasi. Fase 7 dan 8 selesai sebagian: yang menunggu pustaka nyata dan golden set masih terbuka.
+Phases 1–6 complete and verified. Phases 7 and 8 partly done: what remains is waiting on a real library and a golden set.
 
-`uv run check` hijau: ruff, ruff format, pyright, pytest 76 lulus, coverage 80%.
+`uv run check` is green: ruff, ruff format, pyright, 76 tests passing, 80% coverage.
 
 ---
 
-## Yang sudah ada
+## What exists
 
-| Bagian | Keadaan |
+| Part | State |
 |---|---|
-| `SOUL.md` + `soul.lock` | v1, hash cocok, tidak disentuh sepanjang pembangunan |
-| `contracts.py` | Seluruh kontrak Pydantic di satu tempat |
-| `backend/` | FastAPI + SQLAlchemy Core, 8 endpoint, seed dari `data/`, gate soul di setiap request |
-| `briefs/load.py` | Parser YAML + validasi dua belas alasan penolakan |
-| `ingest/` | Caption YouTube, fallback Whisper, cache per video, laporan run |
-| `index/` | Segmenter, fitur heuristik, klasifikasi kind, kartu segmen |
-| `agent/` | LangGraph: plan, index, match, write, critique, tujuh gate |
+| `SOUL.md` + `soul.lock` | v2 (English), hash matches |
+| `contracts.py` | Every Pydantic contract in one place |
+| `backend/` | FastAPI + SQLAlchemy Core, 8 endpoints, seeds from `data/`, soul gate on every request |
+| `briefs/load.py` | YAML parser + twelve rejection reasons |
+| `ingest/` | YouTube captions, Whisper fallback, per-video cache, run report |
+| `index/` | Segmenter, heuristic features, kind classification, segment cards |
+| `agent/` | LangGraph: plan, index, match, write, critique, seven gates |
 | `report/render.py` | `scripts/*.md`, `*.json`, `index.md`, `blocked.md`, `run.json` |
-| `eval/metrics.py` | Lima metrik, golden set hanya dibaca di sini |
-| `narathor/` | CLI Typer: soul, narrative, ingest, index, mine, script, report, eval, doctor, status, check |
-| `tests/` | 76 test, semuanya tanpa model dan tanpa jaringan |
-| `data/` | Belum ada pustaka nyata. Test memakai fixture di `tests/fixtures.py` |
+| `eval/metrics.py` | Five metrics; the golden set is read only here |
+| `narathor/` | Typer CLI: soul, narrative, ingest, index, mine, script, report, eval, doctor, status, check |
+| `tools/build_site.py` | Static site generator for GitHub Pages |
+| `tests/` | 76 tests, none calling a model or the network |
+| `data/` | No real library yet. Tests use fixtures in `tests/fixtures.py` |
 
 ---
 
-## Metrik
+## Metrics
 
-| Metrik | Target | Sekarang |
+| Metric | Target | Now |
 |---|---|---|
-| Test lulus | semua | 76 |
+| Tests passing | all | 76 |
 | Coverage | >= 80% | 80% |
-| `pyright` | 0 error | 0 |
-| `ruff` | bersih | bersih |
-| `citation_violation_rate` | = 0 | 0 pada golden set kosong dan fixture |
-| `soul_violation_rate` | = 0 | 0 pada fixture |
-| `precision@10` | >= 0.6 | belum diukur, golden set belum ada |
-| Biaya per run (30 naskah) | <= $5 | belum diukur, butuh pustaka nyata |
+| `pyright` | 0 errors | 0 |
+| `ruff` | clean | clean |
+| `citation_violation_rate` | = 0 | 0 on fixtures |
+| `soul_violation_rate` | = 0 | 0 on fixtures |
+| `precision@10` | >= 0.6 | not measured, no golden set |
+| Cost per run (30 scripts) | <= $5 | not measured, needs a real library |
 
 ---
 
-## Perbandingan Writer
+## Writer comparison
 
-Belum dijalankan. Menunggu golden set dan 10 `Combo` yang sama.
+Not run. Waiting on a golden set and 10 identical `Combo`s.
 
-| Tanggal | Kandidat | Cadangan | Menang | Keputusan |
+| Date | Candidate | Backup | Winner | Decision |
 |---|---|---|---|---|
-| - | `deepseek/deepseek-v4.1-flash` | `claude-sonnet-5-5` | - | Belum diuji |
+| - | `deepseek/deepseek-v4.1-flash` | `claude-sonnet-5-5` | - | Not tested |
 
 ---
 
 ## Soul Compliance Log
 
-| Tanggal | Versi soul | `soul verify` | Naskah dibuang | Catatan |
+| Date | Soul version | `soul verify` | Scripts discarded | Note |
 |---|---|---|---|---|
-| 2026-11-09 | 1 | ok | - | Soul v1, hash tidak berubah sepanjang pembangunan |
+| 2026-11-09 | 1 | ok | - | Soul v1 ratified in Indonesian |
+| 2026-11-09 | 2 | ok | - | Translated to English; seven articles preserved in meaning. Text of v1 remains in git history at `8f4c140` |
 
 ---
 
 ## Decision Log
 
-| Tanggal | Keputusan | Alasan | Dampak |
+| Date | Decision | Reason | Impact |
 |---|---|---|---|
-| 2026-11-09 | Kontrak data di `contracts.py` di akar repo | Backend, agent, dan CLI butuh schema yang sama; satu tempat mencegah schema bercabang | Semua modul mengimpor dari sini |
-| 2026-11-09 | `data/` dipisah: `channel.json`, `videos.json`, `transcripts/<video_id>.json` | `docs/` tidak menentukan bentuk pustaka; ini bentuk paling sederhana yang cocok dengan `TranscriptDoc` | Backend menyemai dari sini, tidak menulis balik |
-| 2026-11-09 | Gate soul dijalankan sebagai dependency FastAPI, bukan middleware | Dependency bisa diuji dan muncul di OpenAPI; middleware menyembunyikan urutan | Setiap endpoint mengembalikan 409 saat hash tidak cocok |
-| 2026-11-09 | Retry Writer dilakukan di dalam node, bukan lewat edge balik | Edge balik ke node fan-out `Send` tidak didukung bersih di LangGraph | `attempts` tercatat per combo, `deferred` setelah dua percobaan |
-| 2026-11-09 | `critique` merangkap iterasi kedua | Menjaga graf tetap asiklik dan mudah diuji tanpa model | Maks dua iterasi, lalu `deferred` dan dilaporkan |
-| 2026-11-09 | `brand_fit` deterministik memakai irisan kata dengan stemming ringan | Anchor di `NARRATIVE.md` masih dipakai; versi ini pengganti sementara saat model belum dipanggil | Ambang 0.12 untuk skor 5, 0.05 untuk skor 3 |
-| 2026-11-09 | Coverage diukur dengan `omit = ["data/*", "tests/*"]` | Pola `*/data/*` ikut memotong seluruh repo karena repo berada di `/opt/data` | Coverage 80% terbaca benar |
+| 2026-11-09 | Data contracts live in `contracts.py` at the repo root | Backend, agent, and CLI need the same schema; one place stops the schema branching | Every module imports from here |
+| 2026-11-09 | `data/` layout: `channel.json`, `videos.json`, `transcripts/<video_id>.json` | `docs/` did not specify the library shape; this is the simplest form that fits `TranscriptDoc` | The backend seeds from here and never writes back |
+| 2026-11-09 | Soul gate as a FastAPI dependency, not middleware | Dependencies are testable and appear in OpenAPI; middleware hides ordering | Every endpoint returns 409 when the hash does not match |
+| 2026-11-09 | Writer retries happen inside the node, not via a back-edge | A back-edge into the `Send` fan-out node is not cleanly supported in LangGraph | `attempts` recorded per combo, `deferred` after two tries |
+| 2026-11-09 | `critique` also performs the second iteration | Keeps the graph acyclic and testable without a model | Two iterations maximum, then `deferred` and reported |
+| 2026-11-09 | Deterministic `brand_fit` using word overlap with light stemming | The anchor in `NARRATIVE.md` still applies; this is the stand-in before a model is called | Threshold 0.12 for score 5, 0.05 for score 3 |
+| 2026-11-09 | Coverage measured with `omit = ["data/*", "tests/*"]` | The pattern `*/data/*` also cut the whole repo because the repo lives under `/opt/data` | Coverage reads correctly at 80% |
+| 2026-11-09 | Soul v1 → v2: translation to English | The constitution must be readable in the repo's language; meaning of all seven articles preserved | Every cached artefact invalidated; nothing in production yet |
+| 2026-11-09 | `soul bump` and `soul verify` bypass the implicit soul check in the CLI | A deliberate change could otherwise never be ratified, because every command halts on mismatch | The ceremony stays reachable while the hash is broken |
 
 ---
 
-## Risks aktif
+## Active risks
 
-| Risiko | Keadaan |
+| Risk | State |
 |---|---|
-| Writer murah menghasilkan prosa datar | Belum terukur; butuh golden set dan model nyata |
-| Pustaka `data/` masih kosong | Menunggu bos menyebut channel pertama |
-| Golden set belum ada | Harus ditandai manusia, 10-20 momen per brief |
-| `interrupt()` LangGraph belum dipakai | Iterasi kedua jatuh ke `deferred`, bukan menunggu keputusan bos |
-| Resume setelah kill belum diuji | Checkpointer `MemorySaver`, belum ada test crash-resume |
-| `review Feb 2027` untuk `ALGORITHM.md` | Di luar kendali kode |
+| A cheap Writer produces flat prose | Not measured; needs a golden set and a real model |
+| The `data/` library is still empty | Waiting for the boss to name the first channel |
+| No golden set | Must be labelled by a human, 10-20 moments per brief |
+| LangGraph `interrupt()` is not wired | The second iteration falls through to `deferred` instead of waiting for the boss |
+| Resume after a kill is untested | Checkpointer is `MemorySaver`; no crash-resume test yet |
+| Function-level docstrings are still Indonesian | Module docstrings and CLI messages are English; ~200 function docstrings remain |
+| `review Feb 2027` for `ALGORITHM.md` | Outside code control |
 
 ---
 
-## Open Questions
+## Open questions
 
-1. **Channel pertama.** Brief contoh memakai `@example`. Channel nyata mana untuk run pertama?
-2. **Golden set.** Siapa menandai 10-20 momen layak per brief?
-3. **Montage.** `output.montages` masih 0 di semua brief. Masuk MVP atau fase berikutnya?
-4. **Bahasa kedua.** `output.language` hanya `id`. Perlu `en`?
+1. **First channel.** The example brief uses `@example`. Which real channel for the first run?
+2. **Golden set.** Who labels 10-20 worthwhile moments per brief?
+3. **Montage.** `output.montages` is 0 in every brief. MVP or a later phase?
+4. **Second language.** `output.language` is only `id`. Is `en` needed?
 
 ---
 
-## Cara menjalankan
+## How to run
 
 ```bash
 uv sync --extra dev

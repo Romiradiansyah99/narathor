@@ -1,114 +1,114 @@
 # Tech Stack
 
-Bentuk sistem dan alasan di baliknya. Versi, bagian, dan batasan.
+The shape of the system and the reasoning behind it. Versions, parts, and constraints.
 
 ---
 
-## 1. Bagian sistem
+## 1. System parts
 
 ```
-narathor/     CLI (Typer). Tipis: memanggil backend, mencetak progress
-backend/      FastAPI + SQLAlchemy Core. Satu-satunya pintu ke data
-agent/        LangGraph. Lima peran, fan-out, checkpointer
-data/         Read-only. Pustaka video, transkrip, eval key
-prompts/      Prompt per tahap, dengan prompt_version
-output/       Artefak hasil run
-briefs/       Narrative Brief milik bos
-dashboard/    React + Vite + TS. Fase 2, belum dibangun
-e2e/          Playwright. Fase 2, belum dibangun
+narathor/     CLI (Typer). Thin: calls the backend, prints progress
+backend/      FastAPI + SQLAlchemy Core. The only door to data
+agent/        LangGraph. Five roles, fan-out, checkpointer
+data/         Read-only. Video library, transcripts, eval key
+prompts/      Prompt per stage, with prompt_version
+output/       Artefacts from a run
+briefs/       Narrative Brief owned by the boss
+dashboard/    React + Vite + TS. Phase 2, not built
+e2e/          Playwright. Phase 2, not built
 ```
 
-**Backend adalah satu-satunya pintu ke data.** Agent tidak pernah membaca `data/` atau database secara langsung. Ia memanggil API. Ini yang membuat invarian bisa ditegakkan: soul check, gate sitasi, dan cap konkurensi semuanya lewat backend.
+**The backend is the only door to data.** The agent never reads `data/` or the database directly. It calls the API. This is what makes the invariants enforceable: soul check, citation gate, and the concurrency cap all go through the backend.
 
 ---
 
 ## 2. Python
 
-Python 3.12, dikelola `uv`. Semua dependency di `pyproject.toml` root.
+Python 3.12, managed by `uv`. All dependencies in the root `pyproject.toml`.
 
-| Pustaka | Peran | Alasan |
+| Library | Role | Why |
 |---|---|---|
-| `fastapi` | API backend | Ringan, tipe jelas, otomatis OpenAPI |
-| `sqlalchemy` (Core) | Akses database | Satu query untuk SQLite dan Postgres |
-| `pydantic` v2 | Kontrak data | Validasi dan serialisasi JSON |
-| `typer` | CLI | Argumen bertipe tanpa boilerplate |
-| `pyyaml` | Brief parsing | Format brief yang dapat dibaca manusia |
-| `httpx` | Klien HTTP | Dipakai CLI dan agent |
-| `langchain` | `create_agent` | Supervisor dan tool-use |
-| `langgraph` | `StateGraph`, `Send`, checkpointer, `interrupt()` | Graf per peran dan durabilitas |
-| `yt-dlp` | Unduh audio/caption | Fallback bila caption tidak tersedia |
-| `youtube-transcript-api` | Ambil caption | Jalur cepat, tanpa unduh |
-| `faster-whisper` | Transkrip fallback | Opsional; hanya dipakai bila caption buruk |
-| `jinja2` | Template laporan | `index.md`, naskah `.md` |
-| `pytest` | Test | Stub model, tanpa jaringan |
-| `ruff` | Lint + format | Satu alat untuk dua pekerjaan |
-| `pyright` | Type check | Ketat |
-| `langfuse` | Tracing | Opsional, mati saat key absen |
+| `fastapi` | API backend | Lightweight, clear types, automatic OpenAPI |
+| `sqlalchemy` (Core) | Database access | One query for SQLite and Postgres |
+| `pydantic` v2 | Data contracts | Validation and JSON serialisation |
+| `typer` | CLI | Typed arguments without boilerplate |
+| `pyyaml` | Brief parsing | A human-readable brief format |
+| `httpx` | HTTP client | Used by CLI and agent |
+| `langchain` | `create_agent` | Supervisor and tool use |
+| `langgraph` | `StateGraph`, `Send`, checkpointer, `interrupt()` | Per-role graph and durability |
+| `yt-dlp` | Download audio/captions | Fallback when captions are unavailable |
+| `youtube-transcript-api` | Fetch captions | Fast path, no download |
+| `faster-whisper` | Transcript fallback | Optional; used only when captions are poor |
+| `jinja2` | Report templates | `index.md`, script `.md` |
+| `pytest` | Tests | Stub models, no network |
+| `ruff` | Lint + format | One tool for two jobs |
+| `pyright` | Type check | Strict |
+| `langfuse` | Tracing | Optional, off when the key is absent |
 
-**Alternatif yang ditolak:**
+**Rejected alternatives:**
 
-- *ORM penuh (Django, SQLModel)* — abstraksi berlebih untuk query sederhana. Core cukup.
-- *Celery/Redis untuk worker* — fan-out ditangani LangGraph; menambah broker hanya menambah bagian yang bisa rusak.
-- *Whisper API berbayar* — fallback lokal sudah cukup dan tidak menambah ketergantungan.
-- *Framework agent lain* — `create_agent` + `StateGraph` sudah menutup kebutuhan; referensi proyek juga memakai jalur ini.
+- *Full ORM (Django, SQLModel)* — over-abstraction for simple queries. Core is enough.
+- *Celery/Redis for workers* — fan-out is handled by LangGraph; adding a broker only adds parts that can break.
+- *Paid Whisper API* — the local fallback is enough and adds no dependency.
+- *Other agent frameworks* — `create_agent` + `StateGraph` covers the need; the reference project also uses this path.
 
 ---
 
 ## 3. Node & browser
 
-| Pustaka | Peran | Status |
+| Library | Role | Status |
 |---|---|---|
-| Node 26 | Runtime tooling | Dipakai |
-| React + Vite + TS | Dashboard | Fase 2 |
-| Playwright | E2E | Fase 2 |
+| Node 26 | Tooling runtime | In use |
+| React + Vite + TS | Dashboard | Phase 2 |
+| Playwright | E2E | Phase 2 |
 
-TypeScript strict, tanpa `any`. Script `package.json` ditulis sebagai `uv run` atau file `.mjs` agar jalan di Windows.
+TypeScript strict, no `any`. `package.json` scripts are written as `uv run` or `.mjs` files so they work on Windows.
 
 ---
 
-## 4. Model
+## 4. Models
 
-Ringkasan; detail di `docs/MODELS.md`.
+Summary; details in `docs/MODELS.md`.
 
-| Peran | Model | Biaya per run |
+| Role | Model | Cost per run |
 |---|---|---|
-| Indexer | tanpa LLM | $0 |
-| Curator, Matcher, Writer | `deepseek/deepseek-v4.1-flash` | ~$3.0 gabungan |
+| Indexer | no LLM | $0 |
+| Curator, Matcher, Writer | `deepseek/deepseek-v4.1-flash` | ~$3.0 combined |
 | Critic | `claude-haiku-5-5` | ~$0.1 |
 | Eval | `stealth/crouton-alpha` | $0 |
-| Cadangan Writer | `claude-sonnet-5-5` | +$32 bila diaktifkan |
+| Writer backup | `claude-sonnet-5-5` | +$32 if enabled |
 
-Writer mendominasi ~84% biaya. Hanya keputusan model Writer yang signifikan secara ekonomi.
+The Writer dominates ~84% of cost. Only the Writer model decision is economically significant.
 
 ---
 
 ## 5. Database
 
-SQLite untuk pengembangan dan test; Postgres untuk data nyata.
+SQLite for development and tests; Postgres for real data.
 
-- Tabel di schema `narathor`.
-- `MetaData(schema="narathor")` + `schema_translate_map={"narathor": None}` → query tanpa kualifikasi, jalan di keduanya.
-- Maksimal 4 koneksi per proses.
-- Test tidak pernah menyentuh jaringan.
-- File SQLite dapat dihapus untuk reset; tidak ada kode migrasi.
+- Tables in schema `narathor`.
+- `MetaData(schema="narathor")` + `schema_translate_map={"narathor": None}` → unqualified queries that run on both.
+- At most 4 connections per process.
+- Tests never touch the network.
+- The SQLite file can be deleted to reset; there is no migration code.
 
-Tabel inti: `channels`, `videos`, `transcripts`, `segments`, `combos`, `scripts`, `citations`, `audits`, `runs`, `agent_calls`, `cache`.
+Core tables: `channels`, `videos`, `transcripts`, `segments`, `combos`, `scripts`, `citations`, `audits`, `runs`, `agent_calls`, `cache`.
 
 ---
 
 ## 6. API
 
-Setiap operasi wajib punya `operation_id`, docstring satu baris, dan tanpa input opsional. Input opsional menyembunyikan perilaku dan mempersulit test.
+Every operation must have an `operation_id`, a one-line docstring, and no optional inputs. Optional inputs hide behaviour and make tests harder.
 
-Contoh:
+Example:
 
 ```python
 @app.get("/api/videos", operation_id="list_videos")
 def list_videos():
-    """Daftar video dalam pustaka."""
+    """List videos in the library."""
 ```
 
-Bentuk ringkas:
+Summary:
 
 | Method | Path | operation_id |
 |---|---|---|
@@ -131,37 +131,37 @@ Bentuk ringkas:
 
 ## 7. Environment
 
-`.env` di root, masuk `.gitignore`. `.env.example` berisi nama variabel tanpa nilai.
+`.env` at the root, in `.gitignore`. `.env.example` holds variable names without values.
 
-| Variabel | Wajib | Default | Dipakai di |
+| Variable | Required | Default | Used in |
 |---|---|---|---|
-| `COMMAND_CODE_API_KEY` | ya | — | Semua panggilan model |
-| `DATABASE_URL` | tidak | — | Postgres; tanpa ini pakai SQLite |
-| `NARATHOR_DB` | tidak | `narathor.db` | Path SQLite |
-| `MODEL_WRITER` | tidak | `deepseek/deepseek-v4.1-flash` | Writer |
-| `MODEL_MATCHER` | tidak | `deepseek/deepseek-v4.1-flash` | Matcher |
-| `MODEL_CRITIC` | tidak | `claude-haiku-5-5` | Critic |
-| `MODEL_CURATOR` | tidak | `deepseek/deepseek-v4.1-flash` | Curator |
-| `MODEL_NAME` | tidak | — | Override borongan |
-| `LANGFUSE_PUBLIC_KEY` | tidak | — | Tracing |
-| `LANGFUSE_SECRET_KEY` | tidak | — | Tracing |
-| `MAX_CONCURRENCY` | tidak | `5` | Fan-out |
+| `COMMAND_CODE_API_KEY` | yes | — | All model calls |
+| `DATABASE_URL` | no | — | Postgres; without it, SQLite is used |
+| `NARATHOR_DB` | no | `narathor.db` | SQLite path |
+| `MODEL_WRITER` | no | `deepseek/deepseek-v4.1-flash` | Writer |
+| `MODEL_MATCHER` | no | `deepseek/deepseek-v4.1-flash` | Matcher |
+| `MODEL_CRITIC` | no | `claude-haiku-5-5` | Critic |
+| `MODEL_CURATOR` | no | `deepseek/deepseek-v4.1-flash` | Curator |
+| `MODEL_NAME` | no | — | Blanket override |
+| `LANGFUSE_PUBLIC_KEY` | no | — | Tracing |
+| `LANGFUSE_SECRET_KEY` | no | — | Tracing |
+| `MAX_CONCURRENCY` | no | `5` | Fan-out |
 
-**Catatan ketidakkonsistenan referensi.** `00. Plan Build References/TECH_STACK.md` menulis `COMMANDCODE_API_KEY`, sedangkan `PLAN.md` menulis `COMMAND_CODE_API_KEY`. Yang dipakai di sini: **`COMMAND_CODE_API_KEY`**, sesuai dokumentasi headless Command Code. Jangan memakai dua nama sekaligus.
+**Note on a reference inconsistency.** `00. Plan Build References/TECH_STACK.md` writes `COMMANDCODE_API_KEY`, while `PLAN.md` writes `COMMAND_CODE_API_KEY`. What is used here: **`COMMAND_CODE_API_KEY`**, per the headless Command Code documentation. Do not use both names.
 
-Tanpa `LANGFUSE_*`, tracing mati total. Test tidak pernah membutuhkan jaringan.
+Without `LANGFUSE_*`, tracing is fully off. Tests never need network.
 
 ---
 
-## 8. Batasan Windows
+## 8. Windows constraints
 
-Diperlukan karena mesin pengembangan utama Windows:
+Needed because the main development machine is Windows:
 
-- Semua script lewat `uv run` atau file `.mjs`; tidak ada `python3`.
-- Path selalu `pathlib.Path`. Tidak ada string path yang dirangkai manual.
-- Checkpointer sinkron. Checkpointer async Postgres tidak bekerja dengan event loop bawaan Windows.
-- Encoding eksplisit `utf-8` saat membaca dan menulis file. Default Windows bukan utf-8.
-- PowerShell untuk contoh perintah; `curl` sebagai alternatif di catatan, bukan asumsi.
+- All scripts go through `uv run` or `.mjs` files; no `python3`.
+- Paths always via `pathlib.Path`. No manually concatenated path strings.
+- Synchronous checkpointer. The async Postgres checkpointer does not work with Windows' default event loop.
+- Explicit `utf-8` encoding when reading and writing files. The Windows default is not utf-8.
+- PowerShell for command examples; `curl` as an alternative in notes, not an assumption.
 
 ---
 
@@ -169,45 +169,45 @@ Diperlukan karena mesin pengembangan utama Windows:
 
 ```
 output/<narrative_id>/<channel>/
-  scripts/<script_id>.json       kontrak untuk mesin render (Fase 2)
-  scripts/<script_id>.md         versi baca manusia
-  index.md                       semua naskah, terurut skor
-  blocked.md                     segmen yang dibuang + pasal yang dilanggar
-  segments.jsonl                 kartu segmen
-  combos.json                    combo dan skornya
-  run.json                       soul_version, brief_hash, model per peran, waktu
+  scripts/<script_id>.json       contract for the render engine (Phase 2)
+  scripts/<script_id>.md         human-readable version
+  index.md                       all scripts, ordered by score
+  blocked.md                     discarded segments + article violated
+  segments.jsonl                 segment cards
+  combos.json                    combos and their scores
+  run.json                       soul_version, brief_hash, model per role, timings
 ```
 
-Artefak tanpa `run.json` tidak boleh ditulis. Tanpa jejak, keluaran tidak dapat direproduksi.
+An artefact without `run.json` may not be written. Without a trace, output cannot be reproduced.
 
-### 9.1 Keluaran `narathor script`
+### 9.1 Output of `narathor script`
 
-Perintah ini tidak mencetak naskah ke stdout. Ia menulis artefak dan mencetak ringkasan:
+This command does not print scripts to stdout. It writes artefacts and prints a summary:
 
 ```
 narathor script --narrative cerdaskan-bangsa --count 30 --workers 5
 
 run_2026-11-09T142233  cerdaskan-bangsa  @example
-  unit: 30 diminta   27 selesai   2 dikembalikan   1 ditunda
-  gate : satu_tesis 27/27 · terlacak 27/27 · dibayar 25/27
-  biaya: $2.61 (writer 84%)
+  unit: 30 requested   27 done   2 returned   1 deferred
+  gate : one_thesis 27/27 · traceable 27/27 · paid 25/27
+  cost : $2.61 (writer 84%)
   output: output/cerdaskan-bangsa/example/
 ```
 
-Detail per naskah ada di `index.md`; yang gagal ada di `index.md` bagian "dikembalikan" beserta gate yang gagal dan alasannya.
+Per-script detail is in `index.md`; failures are in the "returned" section of `index.md` with the failing gate and its reason.
 
-Exit code: `0` bila minimal satu naskah lolos, `1` bila semua gagal, `2` bila brief atau soul ditolak.
+Exit code: `0` when at least one script passes, `1` when all fail, `2` when the brief or the soul is rejected.
 
 ---
 
-## 10. Pemeriksaan
+## 10. Checks
 
-Satu perintah menjalankan semua:
+One command runs everything:
 
 ```bash
 uv run check    # ruff format, ruff check, pyright, pytest --cov (min 80%)
 ```
 
-Aturan: jangan menurunkan threshold, mematikan aturan, atau mengecualikan file agar hijau. Kalau sebuah aturan terasa salah, hentikan dan tanyakan.
+Rule: never lower a threshold, disable a rule, or exclude a file to make it green. If a rule feels wrong, stop and ask.
 
-Test wajib memakai stub model. Tidak ada test yang memanggil model nyata, dan tidak ada test yang membaca `data/eval/`.
+Tests must use stub models. No test calls a real model, and no test reads `data/eval/`.

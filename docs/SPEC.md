@@ -1,67 +1,67 @@
 # The Narathor brief
 
-Dari pemilik produk, bersama tim konten.
+From the product owner, with the content team.
 
-## Bagaimana konten bekerja hari ini
+## How content works today
 
-Setiap orang menonton short. Attention span memendek, dan sebagian besar waktu itu dibelanjakan untuk hal yang tidak meninggalkan apa pun.
+Everyone watches shorts. Attention spans shorten, and most of that time is spent on things that leave nothing behind.
 
-Di sisi lain, ada ribuan jam materi serius yang sudah diucapkan orang yang layak didengar — di YouTube, dalam video panjang satu jam, oleh orang yang paham apa yang mereka bicarakan. Materi itu hampir tidak pernah sampai ke orang yang paling membutuhkannya, karena bentuknya tidak cocok dengan cara orang menonton hari ini.
+On the other side, there are thousands of hours of serious material already spoken by people worth hearing — on YouTube, in hour-long videos, by people who understand what they are talking about. That material almost never reaches the people who need it most, because its shape does not fit the way people watch today.
 
-Jarak antara dua kenyataan itu adalah masalah yang ingin kami selesaikan. Bukan dengan membuat konten baru yang lebih ramai, tapi dengan **memindahkan pemahaman** dari tempat ia diucapkan ke tempat ia dibutuhkan.
+The distance between those two realities is the problem we want to solve. Not by making new content that is louder, but by **moving understanding** from where it is spoken to where it is needed.
 
-## Apa yang kami inginkan
+## What we want
 
-Sebuah mesin yang bekerja pada **pustaka video sebuah channel** — misalnya 400 video dari satu channel — dan menghasilkan naskah short yang utuh, siap diproduksi.
+An engine that works on **the video library of one channel** — say 400 videos from a single channel — and produces whole short scripts, ready for production.
 
-Mesin itu harus:
+The engine must:
 
-1. **Mengindeks** setiap video menjadi segmen-segmen bermakna, dengan timestamp.
-2. **Mengombinasikan** segmen dari video-video **berbeda** menjadi satu alur yang membentuk satu tesis. Bukan memotong satu momen, tapi merangkai beberapa.
-3. **Menulis naskah penuh** — hook, rangkaian kalimat, payoff, teks layar, judul, caption — dengan bahasa manusia, bukan ringkasan kaku.
-4. **Menjaga setiap fakta terlacak** ke timestamp di mana ia diucapkan.
-5. **Menilai karyanya sendiri** dan mengembalikan yang belum cukup baik, bukan meneruskannya.
+1. **Index** each video into meaningful segments, with timestamps.
+2. **Combine** segments from **different** videos into one arc that forms a single thesis. Not cutting one moment, but stringing several together.
+3. **Write the full script** — hook, sequence of lines, payoff, on-screen text, title, caption — in human language, not a stiff summary.
+4. **Keep every fact traceable** to the timestamp where it was said.
+5. **Judge its own work** and return what is not good enough, rather than passing it along.
 
-Arah kontennya tidak ditentukan oleh mesin. Itu ditentukan oleh kami lewat Narrative Brief, dan mesin tunduk pada brief itu.
+The content direction is not set by the engine. It is set by us through the Narrative Brief, and the engine submits to that brief.
 
 ## Rules
 
-- **Soul mengikat.** `SOUL.md` tidak dapat diubah oleh brief, config, atau flag. Setiap brief yang lebih longgar daripada soul akan ditolak.
-- **Fakta wajib terlacak.** Naskah boleh ditulis dengan kata sendiri, tapi setiap klaim faktual wajib punya rujukan timestamp yang benar-benar ada di transkrip. Klaim tanpa sitasi → naskah ditolak.
-- **Hook wajib dibayar.** Apa pun yang dijanjikan pembuka harus muncul di isi. Tidak ada penundaan payoff untuk menahan tontonan.
-- **Kombinasi minimal dua video.** Kalau hanya satu video, itu potongan, bukan karya.
-- **Tanpa clickbait, tanpa paywall, tanpa eksploitasi ketakutan.**
-- **Tidak ada daftar frasa terlarang.** Kreativitas dinilai lewat tiga uji khas, bukan lewat daftar larangan. Yang dilarang adalah niat menipu, bukan pilihan kata.
-- **Arah konten ditentukan lewat `briefs/<id>.yaml`.** Tidak ada tema, channel, atau nilai yang boleh ditanam di kode.
-- **Keluaran MVP adalah naskah dan timestamp.** Render video bukan bagian dari build ini.
+- **The soul binds.** `SOUL.md` cannot be changed by brief, config, or flag. Any brief looser than the soul is rejected.
+- **Facts must be traceable.** A script may be written in its own words, but every factual claim must carry a timestamp reference that actually exists in the transcript. A claim without a citation → the script is rejected.
+- **The hook must be paid.** Whatever the opening promises must appear in the body. No delaying the payoff to hold viewers.
+- **A combination of at least two videos.** With only one video it is a clip, not a work.
+- **No clickbait, no paywall, no exploiting fear.**
+- **No list of forbidden phrases.** Creativity is judged by three signature tests, not by a list of bans. What is forbidden is the intent to deceive, not a choice of words.
+- **Content direction is set through `briefs/<id>.yaml`.** No theme, channel, or value may be planted in code.
+- **The MVP output is scripts and timestamps.** Rendering video is not part of this build.
 
-## Apa yang tim harus lihat
+## What the team must be able to see
 
-- Daftar naskah dengan tesisnya, satu baris per naskah, terurut menurut skor.
-- Untuk setiap naskah: segmen mana yang dipakai, dari video mana, pada detik berapa.
-- Naskah yang dikembalikan, beserta gate mana yang gagal dan alasannya.
-- Naskah yang ditolak karena pelanggaran soul atau sitasi, beserta pasal yang dilanggar.
-- Status run: berapa unit selesai, berapa berjalan, berapa tertunda.
-- Ringkasan evaluasi: presisi pemilihan, tingkat pelanggaran sitasi, tingkat lolos gate kriya.
+- The list of scripts with their thesis, one line each, ordered by score.
+- For every script: which segments were used, from which video, at which second.
+- Scripts that were returned, with which gate failed and why.
+- Scripts rejected for a soul or citation violation, with the article violated.
+- Run status: how many units finished, how many running, how many deferred.
+- The evaluation summary: selection precision, citation violation rate, craft gate pass rate.
 
-## Data kami
+## Our data
 
-`data/` berisi pustaka video, transkrip, dan metadata channel. Read-only. Mesin menyemainya ke database sendiri dan tidak pernah menulis balik.
+`data/` holds the video library, transcripts, and channel metadata. Read-only. The engine seeds them into its own database and never writes back.
 
-`data/eval/` berisi kunci jawaban — penilaian manusia atas momen mana yang layak. **Agent tidak boleh membukanya.** Test juga tidak. Ia dipakai hanya oleh `narathor eval` untuk mengukur, bukan untuk belajar.
+`data/eval/` holds the answer key — human judgement of which moments are worth using. **The agent must not open it.** Tests must not either. It is used only by `narathor eval` to measure, not to learn.
 
-## Tidak untuk sekarang
+## Not for now
 
-- Dashboard web.
-- Render video, burn caption, crop 9:16.
-- Auto-posting ke platform.
-- Login dan multi-pengguna.
-- Penjaminan viral. Yang dijamin adalah kepatuhan pada sinyal yang diketahui, bukan hasil.
+- Web dashboard.
+- Video rendering, burned captions, 9:16 cropping.
+- Auto-posting to platforms.
+- Login and multi-user.
+- Guaranteeing virality. What is guaranteed is compliance with known signals, not an outcome.
 
-## Bagaimana kami tahu ini berhasil
+## How we will know this works
 
-Bukan dari jumlah naskah yang dihasilkan. Dari tiga hal:
+Not from the number of scripts produced. From three things:
 
-1. Naskah yang lolos gate bisa dibaca sekali dan langsung dipahami.
-2. Setiap fakta di dalamnya bisa ditelusuri ke detik di video aslinya.
-3. Setelah diproduksi, penonton bertahan lebih lama daripada rata-rata — dan yang lebih penting, mereka tidak menyesal menontonnya.
+1. A script that passes the gates can be read once and understood immediately.
+2. Every fact inside it can be traced to the second in the original video.
+3. Once produced, viewers stay longer than average — and more importantly, they do not regret watching it.

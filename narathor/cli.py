@@ -46,8 +46,14 @@ def _require_soul() -> int:
 
 
 @app.callback()
-def main() -> None:
-    """Semua command memverifikasi soul lebih dulu."""
+def main(ctx: typer.Context) -> None:
+    """Every command verifies the soul first, except the ceremony itself.
+
+    `soul bump` and `soul verify` must stay reachable while the hash is mismatched,
+    otherwise a deliberate change could never be ratified.
+    """
+    if ctx.invoked_subcommand == "soul":
+        return
     _require_soul()
 
 

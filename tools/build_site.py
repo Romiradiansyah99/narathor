@@ -110,7 +110,7 @@ def _page(title: str, body: str, depth: int = 0) -> str:
 <body>
 <div class="wrap">
 {body}
-<div class="foot">Narathor. Naskah dengan sitasi per detik. Dibangun dari <code>SOUL.md</code> v{1}.</div>
+<div class="foot">Narathor. Naskah dengan sitasi per detik. Built on a hash-verified <code>SOUL.md</code>.</div>
 </div>
 </body>
 </html>

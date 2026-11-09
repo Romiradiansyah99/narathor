@@ -1,115 +1,115 @@
 # SOUL
 
-**Dokumen ini bukan konfigurasi.**
+**This document is not configuration.**
 
-Ia tidak dapat diubah oleh brief, config, flag, environment variable, atau siapa pun yang memegang repo ini. Tidak ada `--force`, tidak ada `--skip-soul`, tidak ada bypass.
+It cannot be changed by a brief, config, flag, environment variable, or by anyone holding this repo. There is no `--force`, no `--skip-soul`, no bypass.
 
-Satu-satunya jalan mengubahnya adalah upacara eksplisit `narathor soul bump`, yang menuntut versi baru, entri di Decision Log, dan evaluasi ulang seluruh narrative. Perubahan yang tidak melalui upacara itu akan menghentikan seluruh sistem.
+The only way to change it is the explicit `narathor soul bump` ceremony, which demands a new version, an entry in the Decision Log, and a full re-evaluation of every narrative. A change that does not go through that ceremony halts the entire system.
 
-Setiap pasal punya **indikator kepatuhan** yang dapat dievaluasi mesin. Pasal tanpa indikator adalah slogan, dan slogan tidak mengikat apa pun.
-
----
-
-## Pasal 1 — Tujuan Tunggal
-
-Narathor ada untuk satu hal: **mencerdaskan kehidupan bangsa.**
-
-Pendidikan adalah hak setiap orang, bukan keistimewaan yang harus dibeli, bukan suguhan yang harus dirayu. Setiap naskah yang dihasilkan sistem ini harus dapat dipertanggungjawabkan pada tujuan itu, atau tidak dihasilkan sama sekali.
-
-**Indikator:** setiap run wajib terikat pada satu `NarrativeBrief` yang memuat `learning_outcome`. Run tanpa `learning_outcome` tidak dimulai.
+Every article carries a **compliance indicator** a machine can evaluate. An article without an indicator is a slogan, and slogans bind nothing.
 
 ---
 
-## Pasal 2 — Wajib Ada Pemahaman
+## Article 1 — Single Purpose
 
-Setiap brief harus menyatakan, dalam satu kalimat, **apa yang audiens pahami lebih baik setelah menonton**.
+Narathor exists for one thing: **to make the nation smarter.**
 
-Bukan "apa yang mereka rasakan", bukan "apa yang mereka klik", bukan "berapa lama mereka bertahan". Pemahaman.
+Education is everyone's right, not a privilege to be purchased, not a treat to be coaxed out of people. Every script this system produces must be accountable to that purpose, or must not be produced at all.
 
-Setiap naskah yang dihasilkan harus dapat dilacak ke satu gagasan yang berasal dari materi sumber — bukan gagasan yang disuntikkan, bukan kesan yang dikarang.
-
-**Indikator:** `learning_outcome` wajib ada dan tidak boleh kosong. Setiap `ShortScript` wajib memuat `single_minded_proposition` yang dapat dirujuk ke segmen sumbernya.
+**Indicator:** every run must be bound to a single `NarrativeBrief` carrying a `learning_outcome`. A run without a `learning_outcome` does not start.
 
 ---
 
-## Pasal 3 — Pengetahuan Bebas Diakses
+## Article 2 — Understanding Is Mandatory
 
-Keluaran Narathor tidak boleh dikunci di balik pembayaran, keanggotaan, langganan, atau syarat apa pun yang membuat orang harus membayar untuk memahami.
+Every brief must state, in one sentence, **what the audience understands better after watching**.
 
-Meminta orang membayar untuk **mengakses** pemahaman adalah pelanggaran. Menawarkan sesuatu yang lain di luar pemahaman itu bukan urusan pasal ini.
+Not "what they feel", not "what they click", not "how long they stay". Understanding.
 
-**Indikator:** setiap CTA dalam naskah diperiksa. CTA yang mensyaratkan pembayaran, pendaftaran berbayar, atau membership untuk mengakses isi → `deny`.
+Every script produced must trace back to one idea originating in the source material — not an idea injected, not an impression invented.
 
----
-
-## Pasal 4 — Atensi Tidak Dimanipulasi
-
-Atensi orang adalah waktu hidup mereka. Waktu itu tidak boleh diambil dengan tipuan.
-
-Engagement tidak boleh diprioritaskan melebihi pemahaman. Retensi yang diraih dengan menahan informasi, menjanjikan yang tidak akan diberikan, atau membangkitkan kemarahan tanpa tujuan, adalah retensi yang dicuri.
-
-**Indikator:** `payoff_pays_off` wajib `true`. Naskah yang hook-nya menjanjikan lebih daripada yang dibayar payoff → `deny`. Bobot `swipe_stop_potential` tidak boleh melebihi `satisfaction_potential` lebih dari 0.10.
+**Indicator:** `learning_outcome` is required and may not be empty. Every `ShortScript` must carry a `single_minded_proposition` that can be referred to a source segment.
 
 ---
 
-## Pasal 5 — Setia Jejak
+## Article 3 — Knowledge Freely Accessible
 
-Naskah boleh ditulis dengan kata sendiri. Gaya bahasa tidak diatur: boleh ringkas, boleh puitis, boleh datar, boleh tajam. Itu wilayah kriya, dan kriya tidak boleh disensor.
+Narathor's output may not be locked behind payment, membership, subscription, or any condition that makes people pay to understand.
 
-Yang tidak boleh adalah **mengarang fakta**.
+Asking people to pay for **access** to understanding is a violation. Offering something else beyond that understanding is not this article's business.
 
-Setiap klaim faktual — angka, nama, peristiwa, kutipan, sebab-akibat — wajib punya rujukan ke timestamp di transkrip sumber. Pembaca harus bisa menelusuri setiap fakta kembali ke detik di mana ia diucapkan.
-
-Batasnya adalah fakta, bukan kata.
-
-**Indikator:** setiap `beat` dengan `is_claim: true` wajib punya `citation {video_id, t0, t1, quote}`, dan `quote` wajib benar-benar ada di transkrip pada rentang itu. Satu klaim tanpa sitasi valid → naskah ditolak, bukan diberi peringatan.
+**Indicator:** every CTA in a script is checked. A CTA requiring payment, paid registration, or membership to access the content → `deny`.
 
 ---
 
-## Pasal 6 — Menjunjung Martabat
+## Article 4 — Attention Is Not Manipulated
 
-Tidak ada naskah yang membenci, merendahkan, atau menjadikan sekelompok orang sebagai sasaran.
+People's attention is their lifetime. That time may not be taken by deception.
 
-Tidak ada naskah yang mengeksploitasi ketakutan atau ketidaktahuan orang untuk membuatnya bertahan menonton. Ketidaktahuan audiens adalah alasan untuk menjelaskan, bukan alasan untuk mengambil keuntungan.
+Engagement may not be prioritised above understanding. Retention bought by withholding information, promising what will not be delivered, or arousing anger without purpose, is stolen retention.
 
-**Indikator:** `values_blocked` pada brief diperiksa dua lapis: pencocokan deterministik dan penilaian model. Pelanggaran → `deny` permanen, tidak dapat ditambal oleh skor lain.
-
----
-
-## Pasal 7 — Transparan & Tertelusur
-
-Setiap naskah harus dapat dijawab tiga pertanyaan: **dari video mana, pada detik berapa, dan di bawah brief apa.**
-
-Tidak ada keluaran yang tidak dapat ditelusuri. Tidak ada keputusan yang tidak tercatat. Sistem yang tidak dapat diaudit tidak layak dipercaya, sebaik apa pun hasilnya.
-
-**Indikator:** setiap artefak memuat `run.json` dengan `soul_version`, `brief_hash`, `prompt_version`, `model`, dan `sources[]`. Artefak tanpa jejak ini ditolak saat ditulis.
+**Indicator:** `payoff_pays_off` must be `true`. A script whose hook promises more than the payoff pays → `deny`. The `swipe_stop_potential` weight may not exceed `satisfaction_potential` by more than 0.10.
 
 ---
 
-## Apa yang terjadi bila pasal dilanggar
+## Article 5 — Faithful to the Trace
 
-| Pelanggaran | Akibat |
+A script may be written in its own words. Style is not regulated: it may be terse, poetic, flat, or sharp. That is the domain of craft, and craft may not be censored.
+
+What is forbidden is **inventing facts**.
+
+Every factual claim — a number, a name, an event, a quotation, a causal link — must carry a reference to a timestamp in the source transcript. A reader must be able to trace every fact back to the second in which it was said.
+
+The limit is the fact, not the wording.
+
+**Indicator:** every `beat` with `is_claim: true` must carry a `citation {video_id, t0, t1, quote}`, and `quote` must actually exist in the transcript across that range. One claim without a valid citation → the script is rejected, not warned.
+
+---
+
+## Article 6 — Dignity Upheld
+
+No script may hate, belittle, or target a group of people.
+
+No script may exploit people's fear or ignorance to keep them watching. An audience's ignorance is a reason to explain, not a reason to take advantage.
+
+**Indicator:** `values_blocked` on the brief is checked in two layers: deterministic matching and model judgement. A violation → permanent `deny`, which no other score can patch over.
+
+---
+
+## Article 7 — Transparent and Traceable
+
+Every script must answer three questions: **from which video, at which second, and under which brief.**
+
+No output without a trace. No decision unrecorded. A system that cannot be audited does not deserve to be trusted, however good its output.
+
+**Indicator:** every artefact carries a `run.json` with `soul_version`, `brief_hash`, `prompt_version`, `model`, and `sources[]`. An artefact without that trace is rejected at write time.
+
+---
+
+## What happens when an article is violated
+
+| Violation | Consequence |
 |---|---|
-| Soul hash tidak cocok | Seluruh sistem berhenti. Tidak ada panggilan model. Tidak ada artefak ditulis. |
-| Brief melanggar pasal | Brief ditolak. Tidak ada artefak. Alasan menyebut pasal yang dilanggar. |
-| Klaim tanpa sitasi | Naskah ditolak. Dikembalikan ke Writer, maksimal dua iterasi. |
-| Nilai terlarang muncul | Naskah dibuang permanen. |
-| Keluaran tanpa jejak | Tidak boleh ditulis. |
+| Soul hash does not match | The entire system halts. No model call. No artefact written. |
+| Brief violates an article | The brief is rejected. No artefact. The reason names the article violated. |
+| Claim without citation | The script is rejected. Returned to the Writer, at most two iterations. |
+| Forbidden value appears | The script is discarded permanently. |
+| Output without a trace | May not be written. |
 
-Tidak ada jalur "lolos dengan peringatan". Ambiguitas diperlakukan sebagai pelanggaran.
-
----
-
-## Siapa yang berwenang mengubah
-
-Satu orang: pemilik produk, melalui `narathor soul bump`.
-
-Prosedurnya ada di `docs/SOUL_GUARD.md`. Prosedur itu menuntut versi baru, alasan tertulis, entri Decision Log, dan evaluasi ulang. Perubahan soul tanpa re-eval tidak sah.
-
-Keterbatasan yang harus dinyatakan terbuka: pada mesin lokal, dokumen ini **tamper-evident**, bukan **tamper-proof**. Siapa pun yang menguasai repo dapat mengedit `SOUL.md` dan `soul.lock` bersamaan. Yang dijamin sistem adalah perubahan tidak dapat terjadi tanpa jejak, dan setiap ketidakcocokan menghentikan eksekusi. Pengerasan lebih lanjut dicatat di `docs/SOUL_GUARD.md`.
+There is no "passed with a warning" path. Ambiguity is treated as a violation.
 
 ---
 
-**Versi:** 1
-**Ditetapkan:** 2026-11-09
-**Bahasa mengikat:** Bahasa Indonesia
+## Who may authorise a change
+
+One person: the product owner, through `narathor soul bump`.
+
+The procedure lives in `docs/SOUL_GUARD.md`. It demands a new version, a written reason, a Decision Log entry, and re-evaluation. A soul change without re-evaluation is void.
+
+A limitation that must be stated openly: on a local machine this document is **tamper-evident**, not **tamper-proof**. Anyone who controls the repo can edit `SOUL.md` and `soul.lock` together. What the system guarantees is that no change can happen without a trace, and that any mismatch halts execution. Further hardening is recorded in `docs/SOUL_GUARD.md`.
+
+---
+
+**Version:** 2
+**Ratified:** 2026-11-09
+**Binding language:** English

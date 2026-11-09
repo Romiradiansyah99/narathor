@@ -1,60 +1,60 @@
 # Narrative Brief
 
-Kontrak untuk mengarahkan Narathor. Brief adalah milik bos — satu-satunya tempat arah konten ditentukan.
+The contract that steers Narathor. The brief belongs to the boss — it is the only place content direction is decided.
 
-Alat ini netral. Arahnya ada di sini.
-
----
-
-## 1. Di mana brief berada dalam hierarki
-
-```
-L0  SOUL.md + soul.lock      ← tidak bisa diubah siapa pun
-L1  docs/BRAND.md            ← identitas alat, tetap
-L2  briefs/<id>.yaml         ← milik bos, dibatasi L0 dan L1
-```
-
-Brief tidak dapat melonggarkan soul. Validator memeriksa itu sebelum run dimulai, bukan setelah.
+The tool is neutral. The direction lives here.
 
 ---
 
-## 2. Lokasi dan penamaan
+## 1. Where the brief sits in the hierarchy
+
+```
+L0  SOUL.md + soul.lock      ← nobody can change it
+L1  docs/BRAND.md            ← tool identity, fixed
+L2  briefs/<id>.yaml         ← owned by the boss, bounded by L0 and L1
+```
+
+A brief cannot loosen the soul. The validator checks that before a run starts, not after.
+
+---
+
+## 2. Location and naming
 
 ```
 briefs/<narrative_id>.yaml
 ```
 
-`narrative_id` huruf kecil, angka, dan tanda hubung. Contoh: `cerdaskan-bangsa`, `literasi-utang-2027`.
+`narrative_id` uses lowercase letters, digits, and hyphens. Examples: `cerdaskan-bangsa`, `literasi-utang-2027`.
 
-Setiap brief punya folder output sendiri: `output/<narrative_id>/<channel>/`. Dua brief berbeda pada channel yang sama tidak pernah berbagi artefak.
+Every brief has its own output folder: `output/<narrative_id>/<channel>/`. Two different briefs on the same channel never share artefacts.
 
 ---
 
-## 3. Schema lengkap
+## 3. Full schema
 
 ```yaml
 id: cerdaskan-bangsa
-title: "Mencerdaskan bangsa lewat atensi yang berguna"
+title: "Making the nation smarter through useful attention"
 
-# --- Wajib: apa yang audiens pahami setelah menonton ---
+# --- Required: what the audience understands after watching ---
 learning_outcome: >
-  Penonton memahami bahwa masalah keuangan pribadi jarang soal jumlah
-  penghasilan, dan lebih sering soal arah aliran.
+  The viewer understands that personal finance problems are rarely about
+  the size of income, and more often about the direction of flow.
 
-# --- Tesis: satu gagasan yang menyatukan semua naskah ---
+# --- Thesis: one idea that unites every script ---
 thesis: >
-  Atensi adalah aset terbatas. Konten yang layak ditonton adalah yang
-  meninggalkan satu gagasan utuh, bukan sekadar kejutan emosi.
+  Attention is a limited asset. Content worth watching leaves one whole
+  idea behind, not just an emotional jolt.
 
-# --- Audiens ---
+# --- Audience ---
 audience:
-  primary: "Indonesia, 18-35, terbiasa short, belum punya dasar"
+  primary: "Indonesia, 18-35, short-form native, no foundation yet"
   literacy_level: menengah
   pain_points:
-    - "merasa sudah tahu tapi hasilnya tidak berubah"
-    - "mudah terpancing judul provokatif"
+    - "feels like they already know, but results never change"
+    - "easily baited by provocative titles"
 
-# --- Nilai: apa yang boleh dan tidak boleh muncul ---
+# --- Values: what may and may not appear ---
 values_allowed:
   - kejujuran_intelektual
   - kerja_keras_tanpa_shortcut
@@ -66,179 +66,179 @@ values_blocked:
   - pseudosains
   - manipulasi_emosi_untuk_engagement
 
-# --- Gaya ---
-register_level: 2            # 1..4, lihat docs/TREND.md
+# --- Style ---
+register_level: 2            # 1..4, see docs/TREND.md
 tone:
-  target: "tegas, jernih, tidak menggurui"
+  target: "firm, clear, never preachy"
   avoid:
-    - "menggurui"
-    - "memohon perhatian"
+    - "preaching"
+    - "begging for attention"
 
-# --- Musim ---
+# --- Season ---
 seasonal_context:
-  as_of: 2026-11-09          # WAJIB
+  as_of: 2026-11-09          # REQUIRED
   period: "Q4 2026"
   moments: []
   trend_notes: ""
   trend_expiry: null
 
-# --- Sumber ---
+# --- Sources ---
 sources:
   channels:
     - "https://www.youtube.com/@example"
   recency_preference: any    # any | recent | classic
   min_duration_s: 180
 
-# --- Bentuk keluaran ---
+# --- Output shape ---
 output:
   scripts: 30
-  target_duration_s: 15      # 13..20 atau 60
+  target_duration_s: 15      # 13..20 or 60
   language: id
   montages: 0
 
-# --- Penyetelan skor (opsional) ---
+# --- Score tuning (optional) ---
 scoring_overrides:
   brand_fit_weight: 0.05
 ```
 
 ---
 
-## 4. Semantik tiap field
+## 4. Semantics of each field
 
-| Field | Wajib | Arti |
+| Field | Required | Meaning |
 |---|---|---|
-| `id` | ya | Identitas brief. Tidak boleh sama dengan brief lain. |
-| `title` | ya | Nama untuk manusia. Muncul di laporan. |
-| `learning_outcome` | **ya** | Satu kalimat pemahaman. Tanpa ini, brief ditolak (Pasal 1 dan 2). |
-| `thesis` | ya | Satu gagasan yang menyatukan seluruh naskah dalam run ini. |
-| `audience.primary` | ya | Siapa. Spesifik, bukan "semua orang". |
-| `audience.literacy_level` | ya | `rendah` / `menengah` / `tinggi`. Memengaruhi penjelasan istilah. |
-| `audience.pain_points` | tidak | Masalah nyata audiens. Membantu Matcher memilih segmen relevan. |
-| `values_allowed` | ya | Nilai yang boleh muncul. Boleh kosong hanya bila `values_blocked` terisi. |
-| `values_blocked` | ya | Nilai yang dibuang permanen. Boleh kosong. |
-| `register_level` | ya | 1–4, lihat `docs/TREND.md`. |
-| `tone.target` | ya | Satu frasa. Contoh: "tegas, jernih, tidak menggurui". |
-| `tone.avoid` | tidak | Yang harus dihindari dalam gaya. |
-| `seasonal_context.as_of` | **ya** | Tanggal konteks disusun. |
-| `seasonal_context.trend_expiry` | tidak | Kapan catatan tren harus ditinjau. |
-| `sources.channels` | ya | Minimal satu URL channel. |
-| `sources.recency_preference` | ya | `any` / `recent` / `classic`. |
-| `sources.min_duration_s` | tidak | Saring video terlalu pendek. Default 180. |
-| `output.scripts` | ya | Berapa naskah diminta. |
-| `output.target_duration_s` | ya | 13–20 atau 60. Nilai 30 ditolak kecuali mode eksperimental. |
-| `output.language` | ya | `id` untuk sekarang. |
-| `output.montages` | tidak | 0 = tidak menghasilkan montage. |
-| `scoring_overrides` | tidak | Penyetelan bobot. Lihat §6. |
+| `id` | yes | Brief identity. Must not collide with another brief. |
+| `title` | yes | Human name. Appears in reports. |
+| `learning_outcome` | **yes** | One sentence of understanding. Without it, the brief is rejected (Articles 1 and 2). |
+| `thesis` | yes | One idea uniting every script in this run. |
+| `audience.primary` | yes | Who. Specific, not "everyone". |
+| `audience.literacy_level` | yes | `rendah` / `menengah` / `tinggi`. Affects how terms are explained. |
+| `audience.pain_points` | no | The audience's real problems. Helps the Matcher pick relevant segments. |
+| `values_allowed` | yes | Values that may appear. May be empty only if `values_blocked` is filled. |
+| `values_blocked` | yes | Values discarded permanently. May be empty. |
+| `register_level` | yes | 1–4, see `docs/TREND.md`. |
+| `tone.target` | yes | One phrase. Example: "firm, clear, never preachy". |
+| `tone.avoid` | no | What to avoid in style. |
+| `seasonal_context.as_of` | **yes** | The date this context was assembled. |
+| `seasonal_context.trend_expiry` | no | When these trend notes must be reviewed. |
+| `sources.channels` | yes | At least one channel URL. |
+| `sources.recency_preference` | yes | `any` / `recent` / `classic`. |
+| `sources.min_duration_s` | no | Filters out videos that are too short. Default 180. |
+| `output.scripts` | yes | How many scripts are requested. |
+| `output.target_duration_s` | yes | 13–20 or 60. The value 30 is rejected unless in experimental mode. |
+| `output.language` | yes | `id` for now. |
+| `output.montages` | no | 0 = produce no montage. |
+| `scoring_overrides` | no | Weight tuning. See §6. |
 
 ---
 
-## 5. Anchor `brand_fit`
+## 5. The `brand_fit` anchor
 
-`brand_fit` adalah kecocokan sebuah segmen dengan brief. Ia dinilai dengan anchor, bukan selera — supaya dua brief berbeda menghasilkan ranking yang berbeda secara terukur.
+`brand_fit` is how well a segment matches the brief. It is judged against anchors, not taste — so that two different briefs produce measurably different rankings.
 
-**Skor 5** — segmen secara langsung melayani `learning_outcome` atau `thesis`, dan tidak menyentuh satu pun `values_blocked`.
+**Score 5** — the segment directly serves the `learning_outcome` or `thesis`, and does not touch a single `values_blocked`.
 
-> Contoh: segmen membahas kebocoran pengeluaran kecil, sementara brief bertesis bahwa masalahnya arah aliran.
+> Example: the segment discusses a leak in small spending, while the brief holds that the problem is the direction of flow.
 
-**Skor 3** — segmen relevan dengan topik tapi tidak langsung melayani tesis; berguna sebagai bukti atau konteks.
+**Score 3** — the segment is relevant to the topic but does not directly serve the thesis; useful as evidence or context.
 
-> Contoh: segmen berisi angka statistik konsumsi, tanpa argumen tentang aliran.
+> Example: the segment contains a consumption statistic, with no argument about flow.
 
-**Skor 1** — segmen menyentuh topik yang sama sekali berbeda; hanya terhubung lewat asosiasi longgar.
+**Score 1** — the segment is about an entirely different topic; connected only by loose association.
 
-**Skor 0** — segmen menyentuh salah satu `values_blocked` → **drop permanen**, `total` diabaikan.
+**Score 0** — the segment touches one of the `values_blocked` → **permanent drop**, `total` is ignored.
 
-Aturan: skor `brand_fit` di bawah 3 pada brief yang ketat → segmen tidak masuk combo.
+Rule: a `brand_fit` below 3 on a strict brief → the segment does not enter a combo.
 
 ---
 
 ## 6. `scoring_overrides`
 
-Hanya field ini yang boleh diubah, dengan batas:
+Only these fields may be changed, within bounds:
 
-| Field | Default | Batas |
+| Field | Default | Bounds |
 |---|---|---|
 | `brand_fit_weight` | 0.05 | 0.00–0.30 |
 | `satisfaction_weight` | 0.20 | 0.10–0.35 |
 | `hook_weight` | 0.25 | 0.15–0.30 |
 
-**Aturan anti-geser:** `hook_weight` tidak boleh melebihi `satisfaction_weight + 0.10`. Tujuannya mencegah brief mengubah produk menjadi mesin hook — itu pelanggaran Pasal 4.
+**Anti-shift rule:** `hook_weight` may not exceed `satisfaction_weight + 0.10`. The purpose is to stop a brief turning the product into a hook machine — that is a violation of Article 4.
 
-`length_fit` bukan bobot. Ia gate, tidak bisa di-override.
+`length_fit` is not a weight. It is a gate and cannot be overridden.
 
 ---
 
-## 7. Alasan brief ditolak
+## 7. Why a brief is rejected
 
-Dua belas kondisi. Masing-masing menyebut dasar penolakannya.
+Twelve conditions. Each names the basis for its rejection.
 
-| # | Kondisi | Dasar |
+| # | Condition | Basis |
 |---|---|---|
-| 1 | `learning_outcome` kosong atau tidak ada | Pasal 1, 2 |
-| 2 | `thesis` kosong | Tidak ada yang menyatukan naskah |
-| 3 | `seasonal_context.as_of` kosong | Gaya tanpa tanggal tidak dapat dipertanggungjawabkan |
-| 4 | `values_blocked` bertabrakan dengan `values_allowed` | Kontradiksi internal |
-| 5 | `values_blocked` memuat nilai yang justru diwajibkan soul | Pasal 3, 4, 6 |
-| 6 | `tone` atau `trend_notes` meminta melonggarkan sitasi | Pasal 5 |
-| 7 | `tone` atau `trend_notes` meminta memaafkan clickbait | Pasal 4 |
-| 8 | `target_duration_s` = 30 tanpa mode eksperimental | `docs/ALGORITHM.md` §4 |
-| 9 | `sources.channels` kosong atau tidak valid | Tidak ada bahan |
-| 10 | `register_level` di luar 1–4 | `docs/TREND.md` §1 |
-| 11 | `scoring_overrides` melampaui batas §6 | Anti-geser |
-| 12 | **Ambiguitas** — validator tidak dapat memastikan brief lolos atau melanggar | Fail-closed |
+| 1 | `learning_outcome` empty or missing | Articles 1, 2 |
+| 2 | `thesis` empty | Nothing unites the scripts |
+| 3 | `seasonal_context.as_of` empty | Style without a date cannot be accounted for |
+| 4 | `values_blocked` collides with `values_allowed` | Internal contradiction |
+| 5 | `values_blocked` contains a value the soul mandates | Articles 3, 4, 6 |
+| 6 | `tone` or `trend_notes` asks to loosen citations | Article 5 |
+| 7 | `tone` or `trend_notes` asks to forgive clickbait | Article 4 |
+| 8 | `target_duration_s` = 30 without experimental mode | `docs/ALGORITHM.md` §4 |
+| 9 | `sources.channels` empty or invalid | No material |
+| 10 | `register_level` outside 1–4 | `docs/TREND.md` §1 |
+| 11 | `scoring_overrides` beyond the bounds in §6 | Anti-shift |
+| 12 | **Ambiguity** — the validator cannot establish that the brief passes or violates | Fail-closed |
 
-**Tentang nomor 12.** Ini keputusan yang disengaja. Brief yang tidak jelas aman diperlakukan sebagai tidak aman. Tidak ada karantina, tidak ada "lolos dengan peringatan", tidak ada peninjauan manusia yang menunda. Brief ambigu ditolak, alasan penolakan menyebut bagian mana yang ambigu, dan bos memperbaikinya.
+**On number 12.** This is a deliberate decision. A brief that is not clear is safely treated as unsafe. No quarantine, no "passed with a warning", no human review that delays. An ambiguous brief is rejected, the reason names which part is ambiguous, and the boss fixes it.
 
-Alasannya: jalur karantina selalu berubah menjadi jalur pintas. Kalau ada cara meloloskan brief yang tidak jelas, orang akan memakainya.
+The reason: a quarantine path always becomes a shortcut. If there is a way to pass a brief that is not clear, people will use it.
 
 ---
 
-## 8. Perilaku saat ditolak
+## 8. Behaviour on rejection
 
 - Exit non-zero.
-- Alasan cetak ke stderr, menyebut nomor kondisi dan pasal.
-- **Tidak ada artefak** ditulis ke `output/`.
-- **Tidak ada panggilan model generatif** setelah penolakan.
+- Reason printed to stderr, naming the condition number and the article.
+- **No artefacts** written to `output/`.
+- **No generative model calls** after the rejection.
 
-Contoh keluaran:
+Example output:
 
 ```
-Brief "cerdaskan-bangsa" ditolak.
+Brief "cerdaskan-bangsa" rejected.
 
-[12] Ambiguitas pada field values_blocked:
-     "konten yang terlalu berhati-hati" tidak dapat dipetakan ke nilai mana pun.
-     Perjelas, atau hapus.
+[12] Ambiguity in field values_blocked:
+     "content that is too careful" cannot be mapped to any value.
+     Clarify it, or remove it.
 
-[5] Pelanggaran Pasal 4:
-     tone.target memuat "bikin penasaran sampai akhir".
-     Ini meminta penundaan payoff.
+[5] Violation of Article 4:
+     tone.target contains "make them curious until the end".
+     This asks to delay the payoff.
 
-Tidak ada artefak yang ditulis.
+No artefacts written.
 ```
 
 ---
 
-## 9. Dua contoh utuh
+## 9. Two complete examples
 
-### 9.1 Brief ketat
+### 9.1 A strict brief
 
 ```yaml
 id: literasi-utang-2027
-title: "Literasi utang tanpa menakut-nakuti"
+title: "Debt literacy without fear-mongering"
 
 learning_outcome: >
-  Penonton memahami perbedaan antara utang yang membangun dan utang yang
-  menggerus, dan dapat menyebut satu tanda yang berlaku pada dirinya.
+  The viewer understands the difference between debt that builds and debt
+  that erodes, and can name one sign that applies to them.
 
 thesis: >
-  Utang bukan moral, tapi matematika dan waktu. Yang berbahaya adalah
-  utang yang dipakai menutup utang.
+  Debt is not morality, it is mathematics and time. What is dangerous is
+  debt used to cover debt.
 
 audience:
-  primary: "Indonesia, 22-40, punya cicilan aktif"
+  primary: "Indonesia, 22-40, has active instalments"
   literacy_level: menengah
   pain_points:
-    - "cicilan bertambah tapi tidak merasa hidup lebih baik"
+    - "instalments grow but life does not feel better"
 
 values_allowed:
   - kejujuran_intelektual
@@ -250,14 +250,14 @@ values_blocked:
 
 register_level: 2
 tone:
-  target: "tenang, jelas, tanpa menghakimi"
-  avoid: ["menakut-nakuti", "menggurui"]
+  target: "calm, clear, never judgemental"
+  avoid: ["fear-mongering", "preaching"]
 
 seasonal_context:
   as_of: 2026-11-09
   period: "Q4 2026"
-  moments: ["akhir tahun fiskal"]
-  trend_notes: "Audiens responsif pada contoh angka konkret, bukan nasihat umum."
+  moments: ["fiscal year end"]
+  trend_notes: "The audience responds to concrete numeric examples, not general advice."
   trend_expiry: 2027-02-01
 
 sources:
@@ -272,23 +272,23 @@ output:
   montages: 0
 ```
 
-**Kenapa ketat:** `values_blocked` memuat tiga hal yang mudah dilanggar konten finansial. `tone.avoid` melarang dua pendekatan paling umum. `learning_outcome` menuntut hasil yang bisa diukur pada penonton.
+**Why it is strict:** `values_blocked` carries three things financial content violates easily. `tone.avoid` forbids the two most common approaches. `learning_outcome` demands a result measurable in the viewer.
 
-### 9.2 Brief longgar
+### 9.2 A loose brief
 
 ```yaml
 id: sains-sehari-hari
-title: "Sains yang ada di dapur"
+title: "The science in your kitchen"
 
 learning_outcome: >
-  Penonton memahami satu prinsip ilmiah yang menjelaskan sesuatu yang
-  mereka lakukan setiap hari.
+  The viewer understands one scientific principle that explains something
+  they do every day.
 
 thesis: >
-  Sains bukan pelajaran, tapi penjelasan atas hal yang sudah biasa.
+  Science is not a school subject, it is an explanation of what is already ordinary.
 
 audience:
-  primary: "Indonesia, 15-30, rasa ingin tahu tinggi"
+  primary: "Indonesia, 15-30, high curiosity"
   literacy_level: rendah
 
 values_allowed: [kejujuran_intelektual]
@@ -296,8 +296,8 @@ values_blocked: [pseudosains]
 
 register_level: 1
 tone:
-  target: "santai, konkret"
-  avoid: ["menggurui"]
+  target: "casual, concrete"
+  avoid: ["preaching"]
 
 seasonal_context:
   as_of: 2026-11-09
@@ -316,26 +316,26 @@ output:
   language: id
 ```
 
-**Kenapa longgar:** hanya satu nilai diblokir (`pseudosains` — batas mutlak), register terendah, tone bebas. Tapi `learning_outcome` tetap wajib: kelonggaran ada pada gaya, bukan pada tujuan.
+**Why it is loose:** only one value is blocked (`pseudosains` — an absolute limit), the lowest register, free tone. But `learning_outcome` is still required: the looseness is in style, never in purpose.
 
 ---
 
-## 10. Uji kausal yang wajib lolos
+## 10. Three causal tests that must pass
 
-Tiga hal yang membuktikan brief benar-benar dipakai, bukan diabaikan:
+Three things that prove the brief is actually used, not ignored:
 
-1. **Ganti brief, ranking berubah.** Dua brief berbeda pada channel yang sama harus menghasilkan urutan segmen berbeda secara terukur.
-2. **Brief melanggar soul → ditolak tanpa artefak.**
-3. **Nilai di `values_blocked` → segmen hilang dari index dan muncul di `blocked.md`** beserta pasal yang dirujuk.
+1. **Change the brief, the ranking changes.** Two different briefs on the same channel must produce measurably different segment orders.
+2. **A brief violating the soul → rejected with no artefacts.**
+3. **A value in `values_blocked` → the segment disappears from the index and appears in `blocked.md`** with the article it refers to.
 
-Kalau salah satu tidak terpenuhi, brief tidak benar-benar dibaca sistem — dan seluruh dokumen ini jadi hiasan.
+If any one of these fails, the brief is not really being read by the system — and this whole document is decoration.
 
 ---
 
-## 11. Yang tidak boleh
+## 11. Not allowed
 
-- Menaruh tema, channel, atau nilai di kode. Semua lewat brief.
-- Menyalin satu brief untuk semua kebutuhan lalu mengubah sedikit. Setiap perubahan arah adalah brief baru dengan `id` baru.
-- Memakai `trend_notes` sebagai instruksi.
-- Menambahkan field di luar schema tanpa memperbarui dokumen ini lebih dulu.
-- Menganggap `learning_outcome` sebagai formalitas. Ia adalah alasan keberadaan run.
+- Putting themes, channels, or values in code. Everything goes through the brief.
+- Copying one brief for every need and changing it slightly. Every change of direction is a new brief with a new `id`.
+- Treating `trend_notes` as an instruction.
+- Adding fields outside the schema without updating this document first.
+- Treating `learning_outcome` as a formality. It is the reason the run exists.

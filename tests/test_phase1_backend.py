@@ -34,7 +34,7 @@ def test_missing_video_returns_404_naming_id(client: TestClient) -> None:
 def test_soul_endpoint_reports_hash(client: TestClient) -> None:
     payload = client.get("/api/soul").json()
     assert payload["ok"] is True
-    assert payload["version"] == 1
+    assert payload["version"] == 2
     assert len(payload["sha256"]) == 64
 
 

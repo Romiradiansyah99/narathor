@@ -1,4 +1,4 @@
-"""Kontrak data Narathor. Satu tempat untuk seluruh model Pydantic.
+"""Narathor data contracts. One place for every Pydantic model.
 
 Backend, agent, dan CLI semuanya mengimpor dari sini supaya schema tidak
 bercabang tiga. Tidak ada logika I/O di file ini.
@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 class Channel(BaseModel):
-    """Channel sumber pustaka."""
+    """A library source channel."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -29,7 +29,7 @@ class Channel(BaseModel):
 
 
 class Video(BaseModel):
-    """Satu video dalam pustaka."""
+    """One video in the library."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -41,7 +41,7 @@ class Video(BaseModel):
 
 
 class Word(BaseModel):
-    """Satu kata bertimestamp di dalam segmen."""
+    """One timestamped word inside a segment."""
 
     t0: float
     t1: float
@@ -49,7 +49,7 @@ class Word(BaseModel):
 
 
 class Segment(BaseModel):
-    """Segmen transkrip hasil segmentasi."""
+    """A transcript segment produced by segmentation."""
 
     t0: float = Field(ge=0)
     t1: float = Field(ge=0)
@@ -64,14 +64,14 @@ class Segment(BaseModel):
 
 
 class SourceKind(StrEnum):
-    """Asal transkrip."""
+    """Where the transcript came from."""
 
     CAPTIONS = "captions"
     WHISPER = "whisper"
 
 
 class TranscriptDoc(BaseModel):
-    """Transkrip penuh satu video."""
+    """The full transcript of one video."""
 
     video_id: str
     language: str
@@ -79,7 +79,7 @@ class TranscriptDoc(BaseModel):
     segments: list[Segment] = Field(default_factory=list)
 
     def text_between(self, t0: float, t1: float) -> str:
-        """Gabungkan teks segmen yang beririsan dengan rentang waktu."""
+        """Join the text of segments overlapping a time range."""
         parts = [s.text for s in self.segments if s.t1 > t0 and s.t0 < t1]
         return " ".join(parts)
 
@@ -93,7 +93,7 @@ RecencyPreference = Literal["any", "recent", "classic"]
 
 
 class Audience(BaseModel):
-    """Audiens sasaran brief."""
+    """The brief target audience."""
 
     primary: str = Field(min_length=3)
     literacy_level: LiteracyLevel
@@ -101,14 +101,14 @@ class Audience(BaseModel):
 
 
 class Tone(BaseModel):
-    """Gaya bahasa yang diminta brief."""
+    """The language style the brief requests."""
 
     target: str = Field(min_length=3)
     avoid: list[str] = Field(default_factory=list)
 
 
 class SeasonalContext(BaseModel):
-    """Konteks musiman brief."""
+    """The brief seasonal context."""
 
     as_of: date
     period: str | None = None
@@ -118,7 +118,7 @@ class SeasonalContext(BaseModel):
 
 
 class Sources(BaseModel):
-    """Sumber pustaka yang dipakai brief."""
+    """The library sources the brief uses."""
 
     channels: list[str] = Field(min_length=1)
     recency_preference: RecencyPreference
@@ -126,7 +126,7 @@ class Sources(BaseModel):
 
 
 class OutputSpec(BaseModel):
-    """Bentuk keluaran yang diminta."""
+    """The requested output shape."""
 
     scripts: int = Field(ge=1)
     target_duration_s: int
@@ -144,7 +144,7 @@ class OutputSpec(BaseModel):
 
 
 class ScoringOverrides(BaseModel):
-    """Penyetelan bobot skor brief."""
+    """Brief score weight tuning."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -154,7 +154,7 @@ class ScoringOverrides(BaseModel):
 
 
 class NarrativeBrief(BaseModel):
-    """Narrative Brief milik bos. Satu-satunya tempat arah konten."""
+    """The boss Narrative Brief. The only place content direction lives."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -199,7 +199,7 @@ UnitStatus = Literal["pending", "running", "done", "returned", "deferred", "bloc
 
 
 class SegmentFeatures(BaseModel):
-    """Fitur heuristik satu segmen. Dihitung tanpa LLM."""
+    """Heuristic features of one segment. Computed with no LLM."""
 
     word_count: int = 0
     wpm: float = 0.0
@@ -212,7 +212,7 @@ class SegmentFeatures(BaseModel):
 
 
 class SegmentCard(BaseModel):
-    """Kartu ringkas segmen, bahan Matcher. Target <= 250 token."""
+    """Compact segment card, input to the Matcher. Target <= 250 tokens."""
 
     segment_id: str
     video_id: str
@@ -225,7 +225,7 @@ class SegmentCard(BaseModel):
 
 
 class Combo(BaseModel):
-    """Kombinasi 2-5 segmen dari minimal 2 video, satu tesis."""
+    """A combination of 2-5 segments from at least 2 videos, one thesis."""
 
     combo_id: str
     thesis: str
@@ -245,7 +245,7 @@ class Combo(BaseModel):
 
 
 class Citation(BaseModel):
-    """Jejak fakta ke detik sumber."""
+    """A fact trace back to the second in the source."""
 
     video_id: str
     t0: float
@@ -254,7 +254,7 @@ class Citation(BaseModel):
 
 
 class Beat(BaseModel):
-    """Satu ketukan naskah."""
+    """One script beat."""
 
     at_s: float = Field(ge=0)
     text: str
@@ -270,7 +270,7 @@ class Beat(BaseModel):
 
 
 class ShortScript(BaseModel):
-    """Naskah short lengkap dengan sitasi."""
+    """A complete short script with citations."""
 
     script_id: str
     combo_id: str
@@ -314,7 +314,7 @@ GATE_NAMES = (
 
 
 class GateResult(BaseModel):
-    """Hasil satu gate Critic."""
+    """Result of one Critic gate."""
 
     name: str
     passed: bool
@@ -322,7 +322,7 @@ class GateResult(BaseModel):
 
 
 class Audit(BaseModel):
-    """Hasil penilaian tujuh gate."""
+    """Result of the seven gate assessment."""
 
     script_id: str
     gates: list[GateResult]
@@ -340,7 +340,7 @@ class Audit(BaseModel):
 
     @property
     def all_passed(self) -> bool:
-        """True bila seluruh gate lulus."""
+        """True when every gate passes."""
         return all(g.passed for g in self.gates)
 
 
@@ -350,7 +350,7 @@ class Audit(BaseModel):
 
 
 class SoulCheck(BaseModel):
-    """Hasil pemeriksaan konstitusi."""
+    """Result of the constitution check."""
 
     ok: bool
     version: int | None
@@ -361,7 +361,7 @@ class SoulCheck(BaseModel):
 
 
 class SourceRef(BaseModel):
-    """Sumber yang dipakai satu run."""
+    """A source used by one run."""
 
     video_id: str
     source: SourceKind
@@ -369,7 +369,7 @@ class SourceRef(BaseModel):
 
 
 class RunRecord(BaseModel):
-    """Jejak satu run. Tanpa ini artefak tidak boleh ditulis."""
+    """The trace of one run. Without it no artefact may be written."""
 
     run_id: str
     brief_id: str

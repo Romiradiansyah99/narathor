@@ -1,4 +1,4 @@
-"""Parser dan validator Narrative Brief. Dua belas alasan penolakan, fail-closed."""
+"""Narrative Brief parser and validator. Twelve rejection reasons, fail-closed."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ WEIGHT_BOUNDS = {
 
 
 def _is_token(value: str) -> bool:
-    """True bila nilai berupa token snake_case huruf kecil."""
+    """True when the value is a lowercase snake_case token."""
     if not value or not value[0].isalpha():
         return False
     return all(c.islower() or c.isdigit() or c == "_" for c in value)
@@ -62,7 +62,7 @@ def _is_token(value: str) -> bool:
 
 @dataclass(frozen=True)
 class Rejection:
-    """Satu alasan penolakan beserta dasarnya."""
+    """One rejection reason together with its basis."""
 
     code: int
     message: str
@@ -70,7 +70,7 @@ class Rejection:
 
 @dataclass
 class BriefReport:
-    """Hasil validasi satu brief."""
+    """The validation result for one brief."""
 
     brief_id: str
     brief: NarrativeBrief | None
@@ -78,18 +78,18 @@ class BriefReport:
 
     @property
     def ok(self) -> bool:
-        """True bila tidak ada penolakan."""
+        """True when there is no rejection."""
         return not self.rejections and self.brief is not None
 
     def render(self) -> str:
-        """Pesan penolakan untuk stderr."""
-        head = f'Brief "{self.brief_id}" ditolak.'
+        """The rejection message for stderr."""
+        head = f'Brief "{self.brief_id}" rejected.'
         body = "\n\n".join(f"[{r.code}] {r.message}" for r in self.rejections)
-        return f"{head}\n\n{body}\n\nTidak ada artefak yang ditulis."
+        return f"{head}\n\n{body}\n\nNo artefacts written."
 
 
 class BriefRejected(RuntimeError):
-    """Brief ditolak; tidak ada artefak yang boleh ditulis."""
+    """The brief is rejected; no artefact may be written."""
 
     def __init__(self, report: BriefReport) -> None:
         super().__init__(report.render())
@@ -97,12 +97,12 @@ class BriefRejected(RuntimeError):
 
 
 def brief_path(briefs_dir: Path, brief_id: str) -> Path:
-    """Jalur file brief."""
+    """Path of a brief file."""
     return briefs_dir / f"{brief_id}.yaml"
 
 
 def brief_hash(brief: NarrativeBrief) -> str:
-    """Hash stabil atas isi brief, dipakai cache key dan run.json."""
+    """Stable hash of the brief contents, used in the cache key and run.json."""
     payload = brief.model_dump_json(exclude_none=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -113,7 +113,7 @@ def _text_blob(brief: NarrativeBrief) -> str:
 
 
 def validate(brief_id: str, raw: dict) -> BriefReport:
-    """Validasi deterministik. Lapis B (model judge) ditangani soul/guard.py."""
+    """Deterministic validation. Layer B (model judge) is handled elsewhere."""
     rejections: list[Rejection] = []
 
     for name in ("learning_outcome", "thesis"):
@@ -122,7 +122,7 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
             code = 1 if name == "learning_outcome" else 2
             rejections.append(
                 Rejection(
-                    code, f"field {name} kosong. Pasal 1 dan 2 menuntut pemahaman yang dinyatakan."
+                    code, f"field {name} is empty. Articles 1 and 2 require a stated understanding."
                 )
             )
 
@@ -131,7 +131,7 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
         rejections.append(
             Rejection(
                 3,
-                "seasonal_context.as_of kosong; gaya tanpa tanggal tidak dapat dipertanggungjawabkan.",
+                "seasonal_context.as_of is empty; style without a date cannot be accounted for.",
             )
         )
 
@@ -141,7 +141,7 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
         for value in blocked:
             if not isinstance(value, str):
                 rejections.append(
-                    Rejection(12, f"values_blocked memuat nilai bukan teks: {value!r}.")
+                    Rejection(12, f"values_blocked contains a non-text value: {value!r}.")
                 )
                 continue
             key = value.strip().lower()
@@ -149,15 +149,15 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
                 rejections.append(
                     Rejection(
                         5,
-                        f'values_blocked memuat "{value}", yang justru diwajibkan soul ({SOUL_MANDATED[key]}).',
+                        f'values_blocked contains "{value}", which the soul mandates ({SOUL_MANDATED[key]}).',
                     )
                 )
             elif not _is_token(key):
                 rejections.append(
                     Rejection(
                         12,
-                        f'Ambiguitas pada field values_blocked: "{value}" tidak dapat dipetakan ke nilai mana pun. '
-                        "Perjelas, atau hapus.",
+                        f'Ambiguity in field values_blocked: "{value}" cannot be mapped to any value. '
+                        "Clarify it, or remove it.",
                     )
                 )
 
@@ -166,19 +166,19 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
     }
     if overlap:
         rejections.append(
-            Rejection(4, f"values_allowed dan values_blocked bertabrakan: {sorted(overlap)}.")
+            Rejection(4, f"values_allowed and values_blocked collide: {sorted(overlap)}.")
         )
 
     sources = raw.get("sources")
     channels = sources.get("channels") if isinstance(sources, dict) else None
     if not isinstance(channels, list) or not channels:
-        rejections.append(Rejection(9, "sources.channels kosong; tidak ada bahan."))
+        rejections.append(Rejection(9, "sources.channels is empty; there is no material."))
     elif not all(isinstance(c, str) and c.startswith("http") for c in channels):
-        rejections.append(Rejection(9, "sources.channels memuat nilai yang bukan URL."))
+        rejections.append(Rejection(9, "sources.channels contains a value that is not a URL."))
 
     register = raw.get("register_level")
     if not isinstance(register, int) or not 1 <= register <= 4:
-        rejections.append(Rejection(10, "register_level harus 1..4."))
+        rejections.append(Rejection(10, "register_level must be 1..4."))
 
     duration = (
         (raw.get("output") or {}).get("target_duration_s")
@@ -186,9 +186,7 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
         else None
     )
     if duration == 30:
-        rejections.append(
-            Rejection(8, "target_duration_s 30 adalah dead zone; pakai 13..20 atau 60.")
-        )
+        rejections.append(Rejection(8, "target_duration_s 30 is the dead zone; use 13..20 or 60."))
 
     blob = " ".join(
         str(x)
@@ -207,7 +205,7 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
             rejections.append(
                 Rejection(
                     6,
-                    f'tone atau trend_notes memuat "{needle}"; ini meminta melonggarkan sitasi (Pasal 5).',
+                    f'tone or trend_notes contains "{needle}"; this asks to loosen citations (Article 5).',
                 )
             )
             break
@@ -216,7 +214,7 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
             rejections.append(
                 Rejection(
                     7,
-                    f'tone atau trend_notes memuat "{needle}"; ini meminta memaafkan clickbait (Pasal 4).',
+                    f'tone or trend_notes contains "{needle}"; this asks to forgive clickbait (Article 4).',
                 )
             )
             break
@@ -229,7 +227,9 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
                 continue
             if not isinstance(value, int | float) or not low <= float(value) <= high:
                 rejections.append(
-                    Rejection(11, f"scoring_overrides.{key}={value} di luar batas {low}..{high}.")
+                    Rejection(
+                        11, f"scoring_overrides.{key}={value} is outside the bounds {low}..{high}."
+                    )
                 )
         hook = overrides.get("hook_weight")
         satisfaction = overrides.get("satisfaction_weight")
@@ -241,15 +241,15 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
             rejections.append(
                 Rejection(
                     11,
-                    f"hook_weight {hook} melebihi satisfaction_weight {satisfaction} + 0.10; "
-                    "ini menggeser produk menjadi mesin hook (Pasal 4).",
+                    f"hook_weight {hook} exceeds satisfaction_weight {satisfaction} + 0.10; "
+                    "this shifts the product into a hook machine (Article 4).",
                 )
             )
         elif hook is not None and satisfaction is None and float(hook) > 0.20 + 0.10:
             rejections.append(
                 Rejection(
                     11,
-                    f"hook_weight {hook} melebihi satisfaction_weight default 0.20 + 0.10 (Pasal 4).",
+                    f"hook_weight {hook} exceeds the default satisfaction_weight 0.20 + 0.10 (Article 4).",
                 )
             )
 
@@ -260,17 +260,17 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
         except ValidationError as exc:
             for err in exc.errors():
                 loc = ".".join(str(p) for p in err["loc"])
-                rejections.append(Rejection(12, f"Ambiguitas pada field {loc}: {err['msg']}."))
+                rejections.append(Rejection(12, f"Ambiguity in field {loc}: {err['msg']}."))
         else:
             if not brief.title.strip():
                 rejections.append(
-                    Rejection(12, "title kosong; brief tanpa nama tidak dapat dilaporkan.")
+                    Rejection(12, "title is empty; a nameless brief cannot be reported.")
                 )
             if not brief.values_allowed and not brief.values_blocked:
                 rejections.append(
                     Rejection(
                         12,
-                        "values_allowed dan values_blocked keduanya kosong; arah nilai tidak jelas.",
+                        "values_allowed and values_blocked are both empty; the value direction is unclear.",
                     )
                 )
     return BriefReport(
@@ -279,13 +279,13 @@ def validate(brief_id: str, raw: dict) -> BriefReport:
 
 
 def load(briefs_dir: Path, brief_id: str) -> BriefReport:
-    """Baca satu brief dari disk lalu validasi. Tidak pernah menulis apa pun."""
+    """Read one brief from disk then validate. Never writes anything."""
     path = brief_path(briefs_dir, brief_id)
     if not path.exists():
         return BriefReport(
             brief_id=brief_id,
             brief=None,
-            rejections=[Rejection(12, f"brief {path.name} tidak ada di {briefs_dir}.")],
+            rejections=[Rejection(12, f"brief {path.name} does not exist in {briefs_dir}.")],
         )
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -293,27 +293,27 @@ def load(briefs_dir: Path, brief_id: str) -> BriefReport:
         return BriefReport(
             brief_id=brief_id,
             brief=None,
-            rejections=[Rejection(12, f"YAML tidak valid: {exc}.")],
+            rejections=[Rejection(12, f"invalid YAML: {exc}.")],
         )
     if not isinstance(raw, dict):
         return BriefReport(
             brief_id=brief_id,
             brief=None,
-            rejections=[Rejection(12, "isi brief bukan mapping YAML.")],
+            rejections=[Rejection(12, "the brief body is not a YAML mapping.")],
         )
     if raw.get("id") != brief_id:
         return BriefReport(
             brief_id=brief_id,
             brief=None,
             rejections=[
-                Rejection(12, f"id di file ({raw.get('id')!r}) tidak sama dengan nama file.")
+                Rejection(12, f"id in file ({raw.get('id')!r}) does not match the filename.")
             ],
         )
     return validate(brief_id, raw)
 
 
 def load_or_raise(briefs_dir: Path, brief_id: str) -> NarrativeBrief:
-    """Muat brief, lempar BriefRejected bila tidak lolos."""
+    """Load a brief, raise BriefRejected when it does not pass."""
     report = load(briefs_dir, brief_id)
     if not report.ok:
         raise BriefRejected(report)
@@ -322,7 +322,7 @@ def load_or_raise(briefs_dir: Path, brief_id: str) -> NarrativeBrief:
 
 
 def list_ids(briefs_dir: Path) -> list[str]:
-    """Semua id brief dari nama file, urut abjad."""
+    """Every brief id from filenames, alphabetically."""
     if not briefs_dir.exists():
         return []
     return sorted(p.stem for p in briefs_dir.glob("*.yaml") if not p.name.startswith("_"))

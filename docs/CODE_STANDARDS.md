@@ -1,67 +1,67 @@
 # Code Standards
 
-Aturan main untuk semua kode di repo ini. Mengikuti `00. Plan Build References/CODE_STANDARDS.md`, dengan tambahan yang khas Narathor.
+The rules for all code in this repo. They follow `00. Plan Build References/CODE_STANDARDS.md`, with additions specific to Narathor.
 
 ---
 
-## Umum
+## General
 
-1. **Sederhana dulu.** Jangan mengabstraksi sampai ada dua pemakai nyata, bukan dua pemakai yang dibayangkan.
-2. **Komentar hanya bila perlu.** Kode yang butuh komentar untuk dipahami biasanya butuh nama yang lebih baik.
-3. **Ringkas.** README pendek. Tanpa emoji di kode, commit, maupun dokumen teknis.
-4. **Hindari defensive berlebih.** Tangani exception di batas sistem (input pengguna, API luar, filesystem). Percayai kode internal sendiri.
-5. **Selalu `uv run`.** Jangan pernah `python3` atau `python` langsung.
-6. **TypeScript strict, tanpa `any`.** Berlaku saat dashboard dibangun (Fase 2).
+1. **Simple first.** Do not abstract until there are two real callers, not two imagined ones.
+2. **Comments only when necessary.** Code that needs a comment to be understood usually needs a better name.
+3. **Terse.** Short README. No emoji in code, commits, or technical documents.
+4. **Avoid excessive defensiveness.** Handle exceptions at system boundaries (user input, external APIs, filesystem). Trust your own internal code.
+5. **Always `uv run`.** Never call `python3` or `python` directly.
+6. **TypeScript strict, no `any`.** Applies when the dashboard is built (Phase 2).
 
 ---
 
-## Khas Narathor
+## Specific to Narathor
 
-7. **Tidak ada perilaku bertema di kode.** Kalau muncul `if channel == "..."` atau daftar nilai hardcoded, itu bug. Pindahkan ke Narrative Brief.
-8. **Soul bukan variabel.** Jangan pernah menaruh isi soul, hash-nya, atau jalur bypass-nya di kode yang dapat diubah lewat config.
-9. **Invarian ditegakkan di backend, bukan di prompt.** Prompt bisa diabaikan model. Endpoint tidak bisa.
-10. **Setiap operasi API punya `operation_id`, docstring satu baris, dan tanpa input opsional.** Mengikuti `docs/TECH_STACK.md`.
-11. **Test tidak pernah memanggil model.** Gunakan stub model. Tidak ada pengecualian.
-12. **Jangan membaca `data/eval/`.** Folder itu answer key. Agent, test, dan tooling tidak menyentuhnya.
-13. **Prompt adalah kode.** Prompt disimpan di `prompts/` dengan `prompt_version`, dan perubahan prompt wajib disertai eval.
-14. **Cache key wajib memuat versi.** `unit_id + prompt_version + brief_hash + soul_version + craft_version`. Cache tanpa versi menghasilkan keluaran basi yang tampak sah.
+7. **No themed behaviour in code.** If `if channel == "..."` or a hardcoded list of values appears, that is a bug. Move it to the Narrative Brief.
+8. **The soul is not a variable.** Never place the soul's contents, its hash, or a bypass path in code that config can change.
+9. **Invariants are enforced in the backend, not in prompts.** A prompt can be ignored by a model. An endpoint cannot.
+10. **Every API operation has an `operation_id`, a one-line docstring, and no optional inputs.** Follows `docs/TECH_STACK.md`.
+11. **Tests never call a model.** Use stub models. No exceptions.
+12. **Do not read `data/eval/`.** That folder is the answer key. Agents, tests, and tooling do not touch it.
+13. **Prompts are code.** Prompts live in `prompts/` with a `prompt_version`, and a prompt change requires an eval.
+14. **Cache keys carry versions.** `unit_id + prompt_version + brief_hash + soul_version + craft_version`. A versionless cache yields stale output that looks legitimate.
 
 ---
 
 ## Python
 
-- Python 3.12, dikelola `uv`.
-- Pydantic v2 untuk semua kontrak data. Model kontrak ada di satu tempat, bukan tersebar.
-- `ruff` untuk lint dan format; `pyright` untuk tipe.
-- Fungsi murni dipisah dari yang menyentuh I/O. Segmentasi transkrip, perhitungan fitur, dan pemeriksaan gate harus dapat diuji tanpa database, tanpa jaringan, tanpa model.
-- Tidak ada `time.sleep` di kode aplikasi. Retry memakai middleware.
-- Path selalu lewat `pathlib`. String path yang dirangkai manual adalah bug di Windows.
+- Python 3.12, managed by `uv`.
+- Pydantic v2 for every data contract. Contract models live in one place, not scattered.
+- `ruff` for lint and format; `pyright` for types.
+- Pure functions are separated from anything touching I/O. Transcript segmentation, feature computation, and gate checks must be testable without a database, network, or model.
+- No `time.sleep` in application code. Retries use middleware.
+- Paths always go through `pathlib`. Manually concatenated path strings are a bug on Windows.
 
 ---
 
-## Konkurensi
+## Concurrency
 
-- Fan-out memakai `Send` dari LangGraph, bukan loop `asyncio` buatan sendiri.
-- `max_concurrency` **selalu** eksplisit. Default 5. Tidak pernah tak terbatas.
-- Setiap unit kerja idempoten. Node yang dijalankan ulang setelah crash tidak boleh menggandakan biaya atau data.
-- Merge hasil deterministik: sort by `script_id`, bukan urutan kedatangan.
-- Satu unit gagal tidak boleh menghentikan run.
-
----
-
-## Error
-
-- Gagal karena pelanggaran soul atau sitasi → **berhenti**, bukan lanjut dengan peringatan.
-- Gagal karena provider/timeout → retry sekali, lalu `deferred`, run lanjut.
-- Gagal karena input buruk (video tidak punya audio, transkrip kosong) → `skipped`, dicatat di `run.json`, run lanjut.
-- Pesan error menyebut apa yang salah dan apa yang harus dilakukan. "Error 400" bukan pesan.
+- Fan-out uses LangGraph's `Send`, not a hand-rolled `asyncio` loop.
+- `max_concurrency` is **always** explicit. Default 5. Never unbounded.
+- Every work unit is idempotent. A node re-run after a crash must not duplicate cost or data.
+- Deterministic merge: sort by `script_id`, not by arrival order.
+- One failing unit must not stop the run.
 
 ---
 
-## Yang tidak boleh
+## Errors
+
+- Failure from a soul or citation violation → **stop**, not continue with a warning.
+- Failure from a provider or timeout → retry once, then `deferred`, the run continues.
+- Failure from bad input (video has no audio, empty transcript) → `skipped`, recorded in `run.json`, the run continues.
+- An error message names what is wrong and what to do about it. "Error 400" is not a message.
+
+---
+
+## Not allowed
 
 - `git commit --no-verify`.
-- Menurunkan threshold, mematikan aturan, atau mengecualikan file agar pemeriksaan hijau.
-- Menambah flag bypass untuk soul, sitasi, atau gate kriya.
-- Menyimpan secret di repo. Semua lewat `.env`, dan `.env` masuk `.gitignore`.
-- Menulis artefak tanpa `run.json`.
+- Lowering a threshold, disabling a rule, or excluding a file to make a check green.
+- Adding a bypass flag for the soul, citations, or craft gates.
+- Storing secrets in the repo. Everything goes through `.env`, and `.env` is in `.gitignore`.
+- Writing artefacts without `run.json`.

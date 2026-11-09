@@ -117,7 +117,7 @@ def test_ambiguous_blocked_value_rejected(settings) -> None:
     report = briefs_load.load(settings.briefs_dir, "uji")
     assert not report.ok
     assert any(r.code == 12 for r in report.rejections), report.render()
-    assert "ambiguitas" in report.render().lower()
+    assert "ambiguity" in report.render().lower()
 
 
 def test_tone_asking_payoff_delay_rejected(settings) -> None:
@@ -126,7 +126,7 @@ def test_tone_asking_payoff_delay_rejected(settings) -> None:
     report = briefs_load.load(settings.briefs_dir, "uji")
     assert not report.ok
     assert any(r.code == 7 for r in report.rejections), report.render()
-    assert "Pasal 4" in report.render()
+    assert "Article 4" in report.render()
 
 
 def test_tone_asking_to_loosen_citation_rejected(settings) -> None:
@@ -137,7 +137,7 @@ def test_tone_asking_to_loosen_citation_rejected(settings) -> None:
     report = briefs_load.load(settings.briefs_dir, "uji")
     assert not report.ok
     assert any(r.code == 6 for r in report.rejections), report.render()
-    assert "Pasal 5" in report.render()
+    assert "Article 5" in report.render()
 
 
 def test_soul_mandated_value_cannot_be_blocked(settings) -> None:

@@ -1,149 +1,149 @@
 # Trend & Register
 
-Gaya bahasa naskah bergantung pada kondisi dan musim. Karena itu ia tidak boleh dikunci sekali untuk selamanya — tapi juga tidak boleh dibiarkan mengambang.
+The language style of a script depends on conditions and season. So it cannot be locked once and forever — but it cannot be left floating either.
 
-Dokumen ini adalah dokumen **paling cepat basi** di repo. Perlakuan: ditinjau tiap kuartal, dan setiap brief membawa tanggal berlakunya sendiri.
+This is the **fastest-aging** document in the repo. Treatment: reviewed every quarter, and every brief carries its own effective date.
 
 ---
 
-## 1. Register sebagai tangga
+## 1. Register as a ladder
 
-Register bukan pilihan bebas. Ia tangga berjenjang, dan brief memilih satu tingkat.
+Register is not a free choice. It is a graded ladder, and the brief picks one level.
 
-| Tingkat | Nama | Contoh kalimat | Kapan dipakai |
+| Level | Name | Example line (Indonesian content) | When used |
 |---|---|---|---|
-| 1 | **Sehari-hari** | "Uang kamu bocor tiap bulan." | Audiens luas, topik praktis, kanal yang sengaja membumi |
-| 2 | **Percakapan** (default) | "Kita sering nggak sadar ke mana uang pergi." | Default untuk hampir semua brief |
-| 3 | **Editorial** | "Pengeluaran kecil adalah kebocoran yang paling sering diabaikan." | Audiens profesional, topik analitis |
-| 4 | **Berwibawa** | "Inflasi gaya hidup menggerus tabungan tanpa terasa." | Audiens institusional, topik kebijakan |
+| 1 | **Everyday** | "Uang kamu bocor tiap bulan." | Broad audience, practical topic, a channel deliberately kept grounded |
+| 2 | **Conversational** (default) | "Kita sering nggak sadar ke mana uang pergi." | Default for almost every brief |
+| 3 | **Editorial** | "Pengeluaran kecil adalah kebocoran yang paling sering diabaikan." | Professional audience, analytical topic |
+| 4 | **Authoritative** | "Inflasi gaya hidup menggerus tabungan tanpa terasa." | Institutional audience, policy topic |
 
-**Mengapa default di tingkat 2.** Tingkat 1 cepat terasa murah dan cepat basi. Tingkat 3–4 menjaga kredibilitas tapi menambah jarak dengan penonton. Tingkat 2 adalah titik di mana orang merasa diajak bicara, bukan dibacakan.
+**Why the default is level 2.** Level 1 quickly feels cheap and ages fast. Levels 3–4 protect credibility but add distance from the viewer. Level 2 is the point where people feel spoken with, not read to.
 
-**Register berlaku pada:** narasi `hook`, `beats` penyambung, `overlay`, `title`, `caption`.
+**Register applies to:** the `hook` narrative, connective `beats`, `overlay`, `title`, `caption`.
 
-**Register tidak berlaku pada:** isi kutipan sumber (yang selalu apa adanya), dan nama teknis (angka, istilah, nama orang).
+**Register does not apply to:** the content of source quotations (always verbatim), and technical names (numbers, terms, people's names).
 
 ---
 
-## 2. Musim dan tren sebagai input bertanggal
+## 2. Season and trend as dated input
 
-Setiap brief wajib membawa konteks musiman beserta tanggalnya.
+Every brief must carry seasonal context together with its date.
 
 ```yaml
 seasonal_context:
-  as_of: 2026-11-09          # wajib. Tanggal konteks ini disusun
+  as_of: 2026-11-09          # required. The date this context was assembled
   period: "Q4 2026"
-  moments:                   # momen yang sedang dekat
-    - "akhir tahun fiskal"
-    - "musim bonus"
+  moments:                   # moments currently near
+    - "fiscal year end"
+    - "bonus season"
   trend_notes: >
-    Format "satu pertanyaan di awal, jawabannya di akhir" sedang hidup.
-    Istilah "cash flow" sudah dipahami audiens umum; "burn rate" belum.
-  trend_expiry: 2027-02-01   # kapan catatan ini harus ditinjau
+    The "one question at the start, answer at the end" format is alive.
+    The term "cash flow" is understood by a general audience; "burn rate" is not.
+  trend_expiry: 2027-02-01   # when these notes must be reviewed
 ```
 
-### Aturan keras
+### Hard rules
 
-**a. `as_of` wajib ada.** Brief tanpa `as_of` ditolak. Konteks gaya tanpa tanggal adalah bahasa yang dipakai seseorang karena kebiasaan, bukan karena alasan.
+**a. `as_of` is required.** A brief without `as_of` is rejected. Style context without a date is language someone uses out of habit, not for a reason.
 
-**b. `trend_expiry` lewat → peringatan keras, bukan penolakan.** `narathor narrative check` memberi peringatan; run tetap berjalan, tapi `run.json` menandai brief kedaluwarsa dan laporan menampilkannya.
+**b. `trend_expiry` passed → a hard warning, not a rejection.** `narathor narrative check` warns; the run still proceeds, but `run.json` marks the brief as expired and the report shows it.
 
-**c. Tren hanya memengaruhi tiga hal:**
+**c. Trends influence only three things:**
 - register (`register_level`)
-- pilihan kata di `overlay`, `title`, `caption`
-- pemilihan segmen (momen yang sedang relevan boleh diprioritaskan)
+- word choice in `overlay`, `title`, `caption`
+- segment selection (currently relevant moments may be prioritised)
 
-**d. Tren tidak boleh memengaruhi:**
-- soul, dalam bentuk apa pun
-- kewajiban sitasi
+**d. Trends must not influence:**
+- the soul, in any form
+- the citation requirement
 - `values_blocked`
-- gate kriya
+- craft gates
 - `payoff_pays_off`
 
-Brief yang memakai alasan tren untuk melonggarkan salah satu di atas **ditolak**, dan alasan penolakan menyebut pasal yang dilanggar.
+A brief that uses a trend as a reason to loosen any of the above is **rejected**, and the rejection reason names the article violated.
 
-**e. `trend_notes` masuk sebagai konteks gaya, bukan instruksi.** Model menerimanya di bagian konteks, bukan di bagian perintah. Perbedaan ini dijaga di `prompts/` (kontrak prompt).
+**e. `trend_notes` enter as style context, not as instruction.** The model receives them in the context section, not the instruction section. That distinction is enforced in `prompts/` (the prompt contract).
 
 ---
 
-## 3. Yang boleh berubah dan yang tidak
+## 3. What may change and what may not
 
-| Boleh berubah karena musim/tren | Tidak boleh berubah |
+| May change with season/trend | May not change |
 |---|---|
-| Tingkat register | Kewajiban sitasi |
-| Frasa pembuka yang sedang hidup | Larangan janji tak dibayar |
-| Pilihan topik yang sedang relevan | Larangan clickbait |
-| Format overlay (satu baris / dua baris) | Batas 7 kata per baris |
-| Jadwal publikasi | Panjang naskah |
-| Iringan/audio yang disarankan | Gate kriya |
-| Sudut pandang (orang pertama / kedua) | Tesis tunggal |
+| Register level | The citation requirement |
+| Opening phrasing that is currently alive | The ban on unpaid promises |
+| Topic choice that is currently relevant | The ban on clickbait |
+| Overlay format (one line / two lines) | The 7-word-per-line limit |
+| Publishing schedule | Script length |
+| Suggested audio | Craft gates |
+| Point of view (first / second person) | Single thesis |
 
 ---
 
-## 4. Kalender peninjauan
+## 4. Review calendar
 
-| Waktu | Yang ditinjau | Penanggung jawab |
+| When | What is reviewed | Owner |
 |---|---|---|
-| Awal tiap kuartal | `register_level` default masih pas? | Bos |
-| 2 minggu sebelum momen besar | `moments` di brief terbaru | Bos |
-| Setiap `trend_expiry` terlewati | Perbarui atau hapus `trend_notes` | Bos |
-| Setiap ada perubahan format platform | `docs/ALGORITHM.md`, lalu `CRAFT.md` | Tim |
+| Start of each quarter | Is the default `register_level` still right? | Boss |
+| 2 weeks before a big moment | `moments` in the newest brief | Boss |
+| Every `trend_expiry` passed | Update or delete `trend_notes` | Boss |
+| Any platform format change | `docs/ALGORITHM.md`, then `CRAFT.md` | Team |
 
-Momen yang biasanya masuk kalender: Ramadan dan Lebaran, tahun ajaran baru, akhir tahun fiskal, musim bonus, musim pajak, pemilu dan pilkada, musim hujan.
-
----
-
-## 5. Risiko yang harus disadari
-
-**Tren cepat basi, dokumen lebih cepat lagi.** `trend_notes` yang ditulis November akan terasa aneh di Maret. Karena itu ia punya masa kedaluwarsa, bukan hanya tanggal tulis.
-
-**Tren bisa menyelinap sebagai pembenaran.** Kalimat paling berbahaya di sistem ini adalah "tapi ini sedang tren". Aturan §2d ada untuk menutup pintu itu.
-
-**Register yang monoton membosankan.** Kalau semua brief tetap di tingkat 2 selama setahun, hasilnya akan terasa seragam. Variasi antar-brief disengaja: topik berat boleh naik ke 3, topik praktis boleh turun ke 1.
-
-**Register bukan identitas Narathor.** `docs/BRAND.md` mengatur suara alat (laporan, error). `TREND.md` mengatur suara naskah. Keduanya tidak boleh dicampur — pesan error yang mengikuti tren adalah kegagalan.
+Moments that usually make the calendar: Ramadan and Eid, the new school year, fiscal year end, bonus season, tax season, elections, rainy season.
 
 ---
 
-## 6. Contoh konteks yang baik dan buruk
+## 5. Risks to be aware of
 
-**Buruk:**
+**Trends age fast, documents faster.** `trend_notes` written in November will feel strange in March. That is why they have an expiry, not just a writing date.
+
+**Trends can slip in as justification.** The most dangerous sentence in this system is "but this is trending right now". Rule §2d exists to close that door.
+
+**A monotonous register is boring.** If every brief stays at level 2 for a year, the output will feel uniform. Variation across briefs is deliberate: a heavy topic may rise to 3, a practical topic may drop to 1.
+
+**Register is not Narathor's identity.** `docs/BRAND.md` governs the tool's voice (reports, errors). `TREND.md` governs the script's voice. The two must not be mixed — an error message that follows trends is a failure.
+
+---
+
+## 6. Examples of good and bad context
+
+**Bad:**
 ```yaml
 seasonal_context:
   as_of: null
-  trend_notes: "buat yang lagi viral aja"
+  trend_notes: "just do whatever is viral"
 ```
-Tidak bertanggal, tidak spesifik, tidak dapat ditindak.
+Undated, unspecific, not actionable.
 
-**Buruk:**
+**Bad:**
 ```yaml
 trend_notes: >
-  Pakai gaya bahasa gaul biar relatable. Abaikan aturan sitasi kalau perlu
-  karena audiens short nggak peduli sumber.
+  Use slang so it feels relatable. Drop the citation rule if needed
+  because a short audience does not care about sources.
 ```
-Memakai tren untuk melonggarkan soul. Ditolak.
+Using a trend to loosen the soul. Rejected.
 
-**Baik:**
+**Good:**
 ```yaml
 seasonal_context:
   as_of: 2026-11-09
   period: "Q4 2026"
-  moments: ["akhir tahun fiskal", "musim bonus"]
+  moments: ["fiscal year end", "bonus season"]
   trend_notes: >
-    Audiens sedang banyak membahas efisiensi anggaran akhir tahun.
-    Format "angka dulu, penjelasan kemudian" sedang bekerja baik.
-    Hindari istilah "burn rate"; gunakan "biaya yang bocor".
+    The audience is heavily discussing year-end budget efficiency.
+    The "number first, explanation after" format is working well.
+    Avoid the term "burn rate"; use "money that leaks".
   trend_expiry: 2027-02-01
 ```
-Bertanggal, spesifik, dapat ditindak, dan menyebut apa yang dihindari beserta penggantinya.
+Dated, specific, actionable, and it names what to avoid together with the replacement.
 
 ---
 
-## 7. Hubungan dengan dokumen lain
+## 7. Relationship to other documents
 
-| Dokumen | Hubungan |
+| Document | Relationship |
 |---|---|
-| `SOUL.md` | Batas atas. Tren tidak pernah menang atas soul |
-| `docs/CRAFT.md` | Gate kriya tidak berubah karena musim |
-| `docs/ALGORITHM.md` | Angka sinyal platform; perubahan di sana bisa memicu perubahan di sini |
-| `docs/NARRATIVE.md` | Mendefinisikan field `register_level` dan `seasonal_context` di brief |
+| `SOUL.md` | The upper bound. Trend never wins over soul |
+| `docs/CRAFT.md` | Craft gates do not change with the season |
+| `docs/ALGORITHM.md` | Platform signal numbers; a change there may trigger a change here |
+| `docs/NARRATIVE.md` | Defines the `register_level` and `seasonal_context` fields in the brief |

@@ -1,9 +1,16 @@
 {
-  "version": 1,
-  "sha256": "cf7ddf8ca53fe5aca4112d7208555fc1a6834286f1efda0920a8a3f7776580bc",
+  "version": 2,
+  "sha256": "70c025987729b4c835b86df3e9fa142f8365b92d80ad91237d57269c53a1aaf9",
   "locked_at": "2026-11-09",
   "locked_by": "boss",
   "algorithm": "sha256",
   "file": "SOUL.md",
-  "previous_versions": []
+  "previous_versions": [
+    {
+      "version": 1,
+      "sha256": "cf7ddf8ca53fe5aca4112d7208555fc1a6834286f1efda0920a8a3f7776580bc",
+      "replaced_at": "2026-11-09",
+      "reason": "Translation to English: all seven articles preserved verbatim in meaning; binding language changed from Indonesian to English so the constitution matches the repo language. Text of v1 remains in git history at 8f4c140."
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 # Process
 
-Cara kerja di repo ini. Mengikuti `00. Plan Build References/PROCESS.md`, disesuaikan dengan Narathor.
+How work is done in this repo. Follows `00. Plan Build References/PROCESS.md`, adapted for Narathor.
 
 ---
 
@@ -10,141 +10,126 @@ Cara kerja di repo ini. Mengikuti `00. Plan Build References/PROCESS.md`, disesu
 uv sync
 ```
 
-Dependency Python ada di `pyproject.toml` root. Pada Fase 2 ditambah `npm install` untuk dashboard.
+Python dependencies live in the root `pyproject.toml`. In Phase 2, `npm install` is added for the dashboard.
 
 ---
 
-## Pemeriksaan
+## Checks
 
 ```bash
 uv run check
 ```
 
-Menjalankan: ruff (lint + format), pyright, pytest dengan coverage minimal 80%.
+Runs: ruff (lint + format), pyright, pytest with a minimum of 80% coverage.
 
-Pada Fase 2 ditambah: Prettier, ESLint, tsc, vitest, dan Playwright.
+In Phase 2 this adds: Prettier, ESLint, tsc, vitest, and Playwright.
 
-Hook pre-commit menjalankan format, lint, type check, dan unit test pada setiap commit.
+A pre-commit hook runs format, lint, type check, and unit tests on every commit.
 
 ---
 
 ## Planning
 
-Saat diminta merencanakan — misalnya "tolong rencanakan pilot" — tulis rencana ke `docs/PLAN.md` dan **jangan menulis kode**.
+When asked to plan — for example "please plan the pilot" — write the plan into `docs/PLAN.md` and **write no code**.
 
-Cara menyusun:
+How to structure it:
 
-1. Bagi pekerjaan menjadi fase, biasanya 5 sampai 8, masing-masing dibangun di atas fase sebelumnya.
-2. Setiap fase punya success criteria detail yang dapat kamu verifikasi sendiri: test yang lulus, perintah dan keluarannya, panggilan API dan responsnya, file yang dihasilkan dan isinya.
-3. Tulis setiap criteria sebagai checkbox.
-4. Berhenti. Tunggu sampai diminta mengimplementasikan.
+1. Break the work into phases, usually 5 to 8, each built on the previous one.
+2. Every phase has detailed success criteria you can verify yourself: tests that pass, commands and their output, API calls and responses, files produced and their contents.
+3. Write each criterion as a checkbox.
+4. Stop. Wait until you are asked to implement.
 
-Rencana yang tidak bisa diverifikasi sendiri bukan rencana; itu niat.
+A plan you cannot verify yourself is not a plan; it is an intention.
 
 ---
 
 ## Implementing
 
-Saat diminta mengimplementasikan, bangun setiap fase berurutan **tanpa berhenti**. Untuk setiap fase:
+When asked to implement, build each phase in order **without stopping**. For every phase:
 
-1. Bangun, dengan test.
-2. Periksa setiap success criterion dan perbaiki yang gagal.
-3. Centang criteria di `docs/PLAN.md` dan perbarui `docs/STATUS.md`.
-4. Commit. Hook pre-commit menjalankan pemeriksaan; kalau gagal, perbaiki dan commit lagi.
+1. Build it, with tests.
+2. Check every success criterion and fix what fails.
+3. Tick the criteria in `docs/PLAN.md` and update `docs/STATUS.md`.
+4. Commit. The pre-commit hook runs the checks; if it fails, fix it and commit again.
 
-Setelah fase terakhir: jalankan `uv run check` dan laporkan hasilnya.
+After the last phase: run `uv run check` and report the result.
 
 ---
 
 ## Rules
 
-- **Tambahkan test pada setiap perubahan.** Test tidak pernah memanggil model; gunakan stub model.
-- **Jangan pernah membaca `data/eval/`.** Folder itu kunci jawaban. Agent, test, dan tooling tidak menyentuhnya.
-- **Jalankan `uv run check` sebelum menyerahkan pekerjaan.**
-- **Jangan pernah memakai `git commit --no-verify`.**
-- **Jangan pernah menurunkan threshold, mematikan aturan, atau mengecualikan file** agar pemeriksaan hijau. Kalau sebuah aturan terasa salah, berhenti dan tanyakan.
-- **Jaga `docs/STATUS.md` tetap benar.**
-- **Jangan push.**
-- **Semua harus jalan di Windows.** Script lewat `uv run` atau file `.mjs`.
-- **Soul tidak disentuh.** Tidak ada task yang boleh mengubah `SOUL.md` atau `soul.lock` kecuali `soul bump` eksplisit yang disetujui bos.
-- **Spec dulu, kode kemudian.** Perubahan perilaku → perbarui `docs/SPEC.md` lebih dulu.
-- **Tidak ada tema di kode.** `if channel == "..."` atau daftar nilai hardcoded adalah bug. Pindahkan ke brief.
-- **Prompt adalah kode.** Simpan di `prompts/` dengan `prompt_version`; perubahan prompt wajib disertai eval.
+- **Add a test with every change.** Tests never call a model; use stub models.
+- **Never read `data/eval/`.** That folder is the answer key. Agents, tests, and tooling do not touch it.
+- **Run `uv run check` before handing over work.**
+- **Never use `git commit --no-verify`.**
+- **Never lower a threshold, disable a rule, or exclude a file** to make a check green. If a rule feels wrong, stop and ask.
+- **Keep `docs/STATUS.md` true.**
+- **Do not push.** (Superseded: pushing is allowed when the boss asks for it in the same session.)
+- **Everything must run on Windows.** Scripts go through `uv run` or `.mjs` files.
+- **The soul is not touched.** No task may change `SOUL.md` or `soul.lock` except an explicit, boss-approved `soul bump`.
+- **Spec first, code second.** A behaviour change updates `docs/SPEC.md` first.
+- **No themes in code.** `if channel == "..."` or a hardcoded list of values is a bug. Move it to the brief.
+- **Prompts are code.** Keep them in `prompts/` with a `prompt_version`; a prompt change requires an eval.
 
 ---
 
-## Urutan kerja per task
+## Work order per task
 
-1. Baca task.
-2. Baca bagian spec yang terkait — jangan menebak.
-3. Tulis test lebih dulu.
-4. Implementasikan.
-5. Jalankan `uv run check`.
-6. Perbarui `docs/STATUS.md`.
+1. Read the task.
+2. Read the relevant part of the spec — do not guess.
+3. Write the test first.
+4. Implement.
+5. Run `uv run check`.
+6. Update `docs/STATUS.md`.
 7. Commit.
 
-Melewati langkah 2 menghasilkan kode yang benar untuk masalah yang salah. Melewati langkah 3 menghasilkan test yang mengikuti implementasi alih-alih menguji perilaku.
+Skipping step 2 produces code that is right for the wrong problem. Skipping step 3 produces tests that follow the implementation instead of testing behaviour.
 
 ---
 
 ## Definition of Done
 
-Sebuah task selesai bila **semua** benar:
+A task is done when **all** of these are true:
 
-- [ ] Test lulus, termasuk test untuk perilaku baru.
-- [ ] `uv run check` hijau tanpa menurunkan apa pun.
-- [ ] Tidak ada test yang memanggil model.
-- [ ] Tidak ada referensi ke `data/eval/`.
-- [ ] Sample keluaran tersimpan di `output/_samples/` bila task menghasilkan artefak.
-- [ ] `docs/STATUS.md` diperbarui.
-- [ ] Dokumen yang terpengaruh diperbarui (SPEC, AGENTS, CRAFT, atau NARRATIVE).
-- [ ] Bila menyentuh scoring atau prompt: hasil `narathor eval` dilampirkan.
+- [ ] Tests pass, including tests for new behaviour.
+- [ ] `uv run check` is green without lowering anything.
+- [ ] No test calls a model.
+- [ ] No reference to `data/eval/`.
+- [ ] A sample output is saved in `output/_samples/` if the task produces artefacts.
+- [ ] `docs/STATUS.md` updated.
+- [ ] Affected documents updated (SPEC, AGENTS, CRAFT, or NARRATIVE).
+- [ ] If it touches scoring or prompts: the `narathor eval` result is attached.
 
 ---
 
 ## Commit
 
-Format pesan:
+Message format:
 
 ```
-<fase>: <apa yang berubah>
+<phase>: <what changed>
 
-<alasan singkat bila tidak jelas dari judul>
+<short reason when the title does not make it obvious>
 ```
 
-Contoh:
+Example:
 
 ```
-fase 4: indexer heuristik + deteksi filler
+fase 4: heuristic indexer + filler detection
 
-Segmentasi memakai jeda >0.8s dan penanda kalimat. Filler dideteksi
-dengan daftar pola, bukan model, karena Indexer memang tanpa LLM.
+Segmentation uses pauses >0.8s and sentence markers. Fillers are detected
+with a pattern list, not a model, because the Indexer takes no LLM.
 ```
 
-Commit dalam bahasa Indonesia. Tanpa emoji. Satu commit satu perubahan logis.
+Commits in English. No emoji. One commit per logical change.
 
 ---
 
-## Ketika ragu
+## When in doubt
 
-| Situasi | Tindakan |
+| Situation | Action |
 |---|---|
-| Spec tidak jelas | Berhenti, tanyakan. Jangan menebak |
-| Test gagal dan perbaikannya berarti melonggarkan gate | Berhenti. Itu bukan perbaikan |
-| Butuh mengubah `SOUL.md` untuk meloloskan sesuatu | Berhenti. Yang salah adalah hal yang ingin diloloskan |
-| Butuh menambah field di brief | Perbarui `docs/NARRATIVE.md` dulu |
-| Butuh peran agent baru | Perbarui `docs/AGENTS.md` dulu |
-| Terpikir flag bypass "hanya untuk sementara" | Tidak ada. Bypass sementara menjadi permanen |
-| Model terlalu mahal | Ubah lewat environment, bukan lewat kode |
-
----
-
-## Laporan akhir
-
-Setelah semua fase selesai, laporkan:
-
-1. Hasil `uv run check`.
-2. Hasil satu run nyata: berapa naskah, berapa lolos gate, berapa dikembalikan.
-3. Metrik: `precision@10`, `citation_violation_rate`, `soul_violation_rate`, `craft_pass_rate`.
-4. Biaya run (dari `run.json`).
-5. Apa yang belum dikerjakan dan mengapa.
+| The spec is unclear | Stop and ask. Do not invent a behaviour. |
+| A check fails for a reason that looks wrong | Fix the reason, never the threshold. |
+| Something needs a bypass flag | It does not. Redesign it. |
+| A source is missing | Report the gap; do not fabricate a substitute. |

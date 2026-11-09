@@ -1,57 +1,57 @@
 # Narathor
 
-Mesin perangkai naskah short dari pustaka video sebuah channel YouTube.
+A short-script assembly engine built on the video library of one YouTube channel.
 
-Narathor mengambil ratusan jam materi yang sudah diucapkan orang yang layak didengar, lalu menyusunnya kembali menjadi naskah short yang utuh: satu tesis, satu alur, setiap fakta terlacak ke detik sumbernya.
+Narathor takes hundreds of hours of material spoken by people worth hearing, and reassembles it into whole short scripts: one thesis, one arc, every fact traceable to the second it was said.
 
-Bukan alat potong video. Bukan alat viral. Alat pemindah pemahaman.
-
----
-
-## Tiga lapis otoritas
-
-```
-L0  SOUL.md + soul.lock     konstitusi — tidak dapat diubah brief, config, atau flag
-L1  docs/BRAND.md           identitas alat — tetap
-L2  briefs/<id>.yaml        arah konten — milik bos, dibatasi L0 dan L1
-```
-
-Arah konten tidak ditanam di kode. Ia hidup di satu file yang dapat diganti kapan saja tanpa menyentuh satu baris program.
+Not a video cutter. Not a virality tool. A tool for moving understanding.
 
 ---
 
-## Peta dokumen
+## Three layers of authority
 
-| Dokumen | Menjawab pertanyaan |
+```
+L0  SOUL.md + soul.lock     constitution — cannot be changed by brief, config, or flag
+L1  docs/BRAND.md           tool identity — fixed
+L2  briefs/<id>.yaml        content direction — owned by the boss, bounded by L0 and L1
+```
+
+Content direction is not embedded in code. It lives in a single file that can be swapped at any time without touching a line of program.
+
+---
+
+## Document map
+
+| Document | Answers |
 |---|---|
-| [`SOUL.md`](SOUL.md) | Apa yang tidak boleh dilanggar, oleh siapa pun |
-| [`docs/SOUL_GUARD.md`](docs/SOUL_GUARD.md) | Bagaimana soul diperiksa dan diubah |
-| [`docs/SPEC.md`](docs/SPEC.md) | Produk ini untuk apa, aturannya apa |
-| [`docs/BRAND.md`](docs/BRAND.md) | Bagaimana Narathor berbicara dan tampil |
-| [`docs/TECH_STACK.md`](docs/TECH_STACK.md) | Bagian sistem, versi, environment, batasan Windows |
-| [`docs/AGENTS.md`](docs/AGENTS.md) | Lima peran, framework, mekanisme konkurensi |
-| [`docs/ALGORITHM.md`](docs/ALGORITHM.md) | Apa yang diukur platform, dan apa yang mitos |
-| [`docs/CRAFT.md`](docs/CRAFT.md) | Standar kriya: kombinasi, gate, tiga uji khas |
-| [`docs/TREND.md`](docs/TREND.md) | Register bahasa dan konteks musiman |
-| [`docs/NARRATIVE.md`](docs/NARRATIVE.md) | Kontrak brief, dan alasan penolakannya |
-| [`docs/MODELS.md`](docs/MODELS.md) | Model per peran, biaya, cara menggantinya |
-| [`docs/PROCESS.md`](docs/PROCESS.md) | Cara merencanakan, membangun, dan menyerahkan |
-| [`docs/CODE_STANDARDS.md`](docs/CODE_STANDARDS.md) | Aturan kode |
-| [`docs/PLAN.md`](docs/PLAN.md) | Urutan pembangunan dan success criteria |
-| [`docs/STATUS.md`](docs/STATUS.md) | Keadaan hari ini, metrik, keputusan |
-| [`briefs/_template.yaml`](briefs/_template.yaml) | Template brief |
+| [`SOUL.md`](SOUL.md) | What may not be violated, by anyone |
+| [`docs/SOUL_GUARD.md`](docs/SOUL_GUARD.md) | How the soul is verified and changed |
+| [`docs/SPEC.md`](docs/SPEC.md) | What this product is for, and its rules |
+| [`docs/BRAND.md`](docs/BRAND.md) | How Narathor speaks and looks |
+| [`docs/TECH_STACK.md`](docs/TECH_STACK.md) | System parts, versions, environment, Windows constraints |
+| [`docs/AGENTS.md`](docs/AGENTS.md) | Five roles, framework, concurrency mechanism |
+| [`docs/ALGORITHM.md`](docs/ALGORITHM.md) | What the platform measures, and what is myth |
+| [`docs/CRAFT.md`](docs/CRAFT.md) | Craft standard: combination, gates, three signature tests |
+| [`docs/TREND.md`](docs/TREND.md) | Language register and seasonal context |
+| [`docs/NARRATIVE.md`](docs/NARRATIVE.md) | The brief contract, and the reasons for rejection |
+| [`docs/MODELS.md`](docs/MODELS.md) | Model per role, cost, how to swap them |
+| [`docs/PROCESS.md`](docs/PROCESS.md) | How to plan, build, and hand over |
+| [`docs/CODE_STANDARDS.md`](docs/CODE_STANDARDS.md) | Code rules |
+| [`docs/PLAN.md`](docs/PLAN.md) | Build order and success criteria |
+| [`docs/STATUS.md`](docs/STATUS.md) | State today, metrics, decisions |
+| [`briefs/_template.yaml`](briefs/_template.yaml) | Brief template |
 
 ---
 
-## Alur
+## Flow
 
 ```
-Channel (400 video)
-  ├─ Curator   → video mana yang masuk lingkup
-  ├─ Indexer   → segmen bermakna per video (tanpa LLM)
-  ├─ Matcher   → Combo: 2–5 segmen dari video berbeda, satu tesis
-  ├─ Writer    → naskah penuh + sitasi per klaim
-  └─ Critic    → tujuh gate; gagal → dikembalikan
+Channel (400 videos)
+  ├─ Curator   → which videos are in scope
+  ├─ Indexer   → meaningful segments per video (no LLM)
+  ├─ Matcher   → Combo: 2–5 segments from different videos, one thesis
+  ├─ Writer    → full script + citation per claim
+  └─ Critic    → seven gates; fail → returned
         ↓
   output/<narrative>/<channel>/
     scripts/*.md  scripts/*.json  index.md  blocked.md  run.json
@@ -61,70 +61,75 @@ Channel (400 video)
 
 ## Quickstart
 
-Belum ada kode. Setelah Fase 1 di `docs/PLAN.md`:
-
 ```bash
-uv sync
-uv run -m narathor doctor
+uv sync --extra dev
+uv run narathor doctor
+uv run narathor soul verify
 ```
 
-Setelah Fase 8:
+A full run:
 
 ```bash
-uv run -m narathor soul verify
-uv run -m narathor narrative check cerdaskan-bangsa
-uv run -m narathor ingest --narrative cerdaskan-bangsa --workers 5
-uv run -m narathor mine   --narrative cerdaskan-bangsa --top 50
-uv run -m narathor script --narrative cerdaskan-bangsa --count 30 --workers 5
-uv run -m narathor report --narrative cerdaskan-bangsa
-uv run -m narathor eval   --narrative cerdaskan-bangsa
+uv run narathor narrative check cerdaskan-bangsa
+uv run narathor ingest --narrative cerdaskan-bangsa
+uv run narathor index  --narrative cerdaskan-bangsa
+uv run narathor mine   --narrative cerdaskan-bangsa --top 50
+uv run narathor script --narrative cerdaskan-bangsa --count 30 --concurrency 5
+uv run narathor report --narrative cerdaskan-bangsa
+uv run narathor eval   --narrative cerdaskan-bangsa
 ```
 
 ---
 
-## Aturan emas
+## Golden rules
 
-1. **Dokumen dulu, kode kemudian.** Perubahan perilaku → perbarui spec lebih dulu.
-2. **Soul tidak disentuh.** Hanya lewat `soul bump` eksplisit.
-3. **Tidak ada tema di kode.** Tema hidup di brief.
-4. **Fakta wajib terlacak.** Klaim tanpa sitasi → naskah ditolak.
-5. **Tidak ada blacklist frasa.** Kreativitas diuji, bukan dilarang.
-6. **Test tidak pernah memanggil model.**
-7. **Jangan membuka `data/eval/`.** Itu kunci jawaban.
-
----
-
-## Yang tidak akan pernah dilakukan Narathor
-
-1. Menerbitkan klaim tanpa jejak ke sumbernya.
-2. Menjanjikan di pembuka apa yang tidak diberikan di isi.
-3. Menyembunyikan bahwa sumber pernah mengatakan sebaliknya.
-4. Membuat orang harus membayar untuk memahami.
-
-Keempatnya bukan kebijakan yang dapat dinegosiasikan. Ketiganya berasal dari `SOUL.md`, dan yang keempat adalah alasan produk ini ada.
+1. **Documents first, code second.** A behaviour change updates the spec first.
+2. **The soul is not touched.** Only through an explicit `soul bump`.
+3. **No themes in code.** Themes live in the brief.
+4. **Facts must be traceable.** A claim without a citation → the script is rejected.
+5. **No phrase blacklist.** Creativity is tested, not forbidden.
+6. **Tests never call a model.**
+7. **Never open `data/eval/`.** That is the answer key.
 
 ---
 
-## Situs
+## What Narathor will never do
 
-Naskah dan sitasinya dipublikasikan sebagai situs statis:
+1. Publish a claim without a trace to its source.
+2. Promise in the opening what the body does not deliver.
+3. Hide that a source once said the opposite.
+4. Make people pay to understand.
+
+Those four are not negotiable policy. Three of them come from `SOUL.md`, and the fourth is the reason this product exists.
+
+---
+
+## Site
+
+Scripts and their citations are published as a static site:
 
 - https://romiradiansyah99.github.io/narathor/
 
-Dibangun ulang setelah setiap run:
+Rebuilt after each run:
 
 ```bash
 uv run python tools/build_site.py
 git push origin master
-# lalu salin isi site/ ke branch gh-pages
+# then copy the contents of site/ onto the gh-pages branch
 ```
 
-GitHub Pages hanya menyajikan berkas. Mesinnya berjalan di mesin sendiri lewat CLI.
+GitHub Pages only serves files. The engine runs on your own machine through the CLI.
 
 ---
 
 ## Status
 
-Fase 0 selesai: dokumen dan konstitusi. Belum ada kode.
+Phases 1–6 complete and verified; phases 7–8 partly done, waiting on a real library and a golden set. `uv run check` is green: ruff, pyright, 76 tests, 80% coverage.
 
-Lihat [`docs/STATUS.md`](docs/STATUS.md).
+See [`docs/STATUS.md`](docs/STATUS.md).
+
+---
+
+## License
+
+Code is released under the MIT license. `SOUL.md` is the product's constitution: it may be read and quoted, but any redistribution of this system must keep it intact and hash-verified.

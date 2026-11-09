@@ -1,4 +1,4 @@
-"""Penegakan konstitusi. Hash byte-per-byte, tanpa normalisasi."""
+"""Constitutional enforcement. Byte-for-byte hash, no normalisation."""
 
 from __future__ import annotations
 
@@ -11,16 +11,16 @@ from contracts import SoulCheck
 
 
 class SoulLockError(RuntimeError):
-    """soul.lock tidak ada atau tidak dapat dibaca."""
+    """soul.lock is missing or unreadable."""
 
 
 def file_sha256(path: Path) -> str:
-    """SHA-256 atas isi file apa adanya."""
+    """SHA-256 over the file contents as they are."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def load_lock(path: Path) -> dict:
-    """Baca soul.lock sebagai dict."""
+    """Read soul.lock as a dict."""
     if not path.exists():
         raise SoulLockError(
             f"soul.lock tidak ada di {path}; jalankan `narathor soul bump --reason`"
@@ -35,7 +35,7 @@ def load_lock(path: Path) -> dict:
 
 
 def verify(soul_path: Path, lock_path: Path) -> SoulCheck:
-    """Periksa SOUL.md terhadap soul.lock. Tidak pernah menulis apa pun."""
+    """Check SOUL.md against soul.lock. Never writes anything."""
     now = datetime.now(UTC)
     if not soul_path.exists():
         return SoulCheck(
@@ -83,7 +83,7 @@ def verify(soul_path: Path, lock_path: Path) -> SoulCheck:
 
 
 def bump(soul_path: Path, lock_path: Path, reason: str) -> dict:
-    """Naikkan versi soul dan simpan hash lama ke previous_versions."""
+    """Raise the soul version and store the old hash in previous_versions."""
     if not reason.strip():
         raise SoulLockError("soul bump menuntut --reason yang tidak kosong")
     if not soul_path.exists():

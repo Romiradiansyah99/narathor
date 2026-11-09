@@ -1,136 +1,136 @@
 # Models
 
-Strategi model Narathor. Dokumen ini berubah setiap ada model baru, jadi dipisah dari `TECH_STACK.md` dan `AGENTS.md`.
+Narathor's model strategy. This document changes whenever a new model appears, which is why it is separated from `TECH_STACK.md` and `AGENTS.md`.
 
-Semua id di bawah adalah id **exact** dari katalog Command Code. Jangan mengarang id.
-
----
-
-## 1. Prinsip
-
-Satu model untuk semua peran adalah kesalahan ekonomi dan kesalahan mutu. Lima peran punya kebutuhan berbeda:
-
-- Pekerjaan yang bisa dikerjakan heuristik → **jangan pakai model sama sekali**.
-- Pekerjaan yang inputnya kecil dan outputnya terstruktur → model murah sudah cukup.
-- Pekerjaan yang menentukan mutu produk → satu-satunya tempat kualitas model benar-benar penting.
-- Pekerjaan yang menilai kepatuhan → model dengan instruction-following kuat, bukan model dengan prosa terbaik.
+Every id below is an **exact** id from the Command Code catalogue. Do not invent ids.
 
 ---
 
-## 2. Alokasi per peran
+## 1. Principle
 
-| Peran | Model | Id exact | $/1M in/out | Cache read | Alasan |
+One model for all roles is an economic mistake and a quality mistake. Five roles have different needs:
+
+- Work that heuristics can do → **use no model at all**.
+- Work with small input and structured output → a cheap model is enough.
+- Work that determines product quality → the one place model quality genuinely matters.
+- Work that judges compliance → a model with strong instruction-following, not the best prose.
+
+---
+
+## 2. Allocation per role
+
+| Role | Model | Exact id | $/1M in/out | Cache read | Why |
 |---|---|---|---|---|---|
-| **Indexer** | tanpa LLM | — | $0 | — | Segmentasi dan deteksi filler murni heuristik: timestamp, regex, jeda. Model tidak menambah apa pun selain biaya. |
-| **Curator** | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | $0.15 / $0.60 | $0.003 | Input hanya judul dan deskripsi video. 1M context, murah, cukup. |
-| **Matcher** | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | $0.15 / $0.60 | $0.003 | Input besar (kartu segmen lintas video). Cache read $0.003 adalah inti ekonomi sistem ini. |
-| **Writer** | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | $0.15 / $0.60 | $0.003 | Keputusan bos: ekonomis dulu. Lihat §4. |
-| **Critic** | Claude Haiku 5.5 | `claude-haiku-5-5` | $0.10 / $0.50 | $0.01 | Menilai tujuh gate, bukan menulis prosa. Instruction-following kuat pada harga rendah. |
-| **Eval / uji** | Crouton Alpha | `stealth/crouton-alpha` | $0 / $0 | $0 | Iterasi pipeline dan uji tanpa biaya. 1.05M context. |
-| **Writer cadangan** | Claude Sonnet 5.5 | `claude-sonnet-5-5` | $2 / $10 | $0.10 | Diaktifkan hanya bila eval membuktikan Writer utama kurang. |
+| **Indexer** | no LLM | — | $0 | — | Segmentation and filler detection are purely heuristic: timestamps, regex, pauses. A model adds nothing but cost. |
+| **Curator** | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | $0.15 / $0.60 | $0.003 | Input is only video titles and descriptions. 1M context, cheap, enough. |
+| **Matcher** | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | $0.15 / $0.60 | $0.003 | Large input (segment cards across videos). Cache read at $0.003 is the core of this system's economics. |
+| **Writer** | DeepSeek V4.1 Flash | `deepseek/deepseek-v4.1-flash` | $0.15 / $0.60 | $0.003 | The boss's decision: economical first. See §4. |
+| **Critic** | Claude Haiku 5.5 | `claude-haiku-5-5` | $0.10 / $0.50 | $0.01 | Judges seven gates, does not write prose. Strong instruction-following at a low price. |
+| **Eval / tests** | Crouton Alpha | `stealth/crouton-alpha` | $0 / $0 | $0 | Pipeline iteration and testing at no cost. 1.05M context. |
+| **Writer backup** | Claude Sonnet 5.5 | `claude-sonnet-5-5` | $2 / $10 | $0.10 | Enabled only when eval proves the main Writer falls short. |
 
-Catatan: `claude-haiku-5-5` dan `claude-sonnet-5-5` memerlukan plan **GOAT** ke atas. `stealth/crouton-alpha` memerlukan **Go** ke atas. Model DeepSeek memerlukan **Go** ke atas.
+Note: `claude-haiku-5-5` and `claude-sonnet-5-5` require the **GOAT** plan or above. `stealth/crouton-alpha` requires **Go** or above. DeepSeek models require **Go** or above.
 
 ---
 
-## 3. Biaya satu run penuh
+## 3. Cost of one full run
 
-Asumsi: channel 400 video, rata-rata 1 jam, menghasilkan 30 naskah.
+Assumption: a 400-video channel, one hour average, producing 30 scripts.
 
-| Tahap | Volume | Perkiraan token | Biaya |
+| Stage | Volume | Estimated tokens | Cost |
 |---|---|---|---|
-| Indeks pustaka | 400 video × ~8 panggilan | ~2.0M input, 0.3M output | **~$0.30** |
-| Thesis clustering | ~8 panggilan batch 50 kartu | ~0.15M | ~$0.02 |
-| Combo assembly | 30 tesis × 1 | ~0.45M | ~$0.07 |
-| Menulis naskah (2 iterasi) | 30 × 3 panggilan | ~4.2M input, 0.6M output | **~$2.60** |
+| Library index | 400 videos × ~8 calls | ~2.0M input, 0.3M output | **~$0.30** |
+| Thesis clustering | ~8 calls, batches of 50 cards | ~0.15M | ~$0.02 |
+| Combo assembly | 30 theses × 1 | ~0.45M | ~$0.07 |
+| Writing scripts (2 iterations) | 30 × 3 calls | ~4.2M input, 0.6M output | **~$2.60** |
 | Critic | 30 × 1 | ~0.2M | ~$0.10 |
 | **Total** | | | **~$3.10** |
 
-**Writer mendominasi ~84% biaya.** Konsekuensi praktis:
+**The Writer dominates ~84% of cost.** Practical consequences:
 
-- Matcher dan Curator boleh murah tanpa ragu.
-- Hanya keputusan model Writer yang signifikan secara ekonomi.
-- Menurunkan biaya Writer 10× hanya menghemat $2.3 dari $3.1. Tidak sepadan bila mutunya jatuh.
+- Curator and Matcher may be cheap without hesitation.
+- Only the Writer model decision is economically significant.
+- Cutting Writer cost 10× saves only $2.3 of $3.1. Not worth it if quality drops.
 
-Dengan cadangan Sonnet 5.5, total naik ke **~$35 per run**. Untuk 30 naskah siap produksi, itu masih wajar — tapi keputusannya harus berbasis eval, bukan rasa.
+With the Sonnet 5.5 backup, the total rises to **~$35 per run**. For 30 production-ready scripts that is still reasonable — but the decision must be based on eval, not feeling.
 
 ---
 
-## 4. Writer: ekonomis dulu, dengan penutup risiko
+## 4. Writer: economical first, with the risk covered
 
-Model murah menulis prosa Indonesia yang cenderung datar dan berpola. Itu risiko nyata terhadap standar kriya.
+A cheap model writes Indonesian prose that tends to be flat and formulaic. That is a real risk to the craft standard.
 
-Karena itu beban mutu **dipindahkan dari model ke struktur**:
+So the quality burden is **moved from the model to the structure**:
 
-1. **Few-shot di prompt.** `docs/CRAFT.md` memuat 3–5 naskah emas. Contoh konkret menaikkan keluaran Writer murah lebih besar daripada menaikkan kelas model tanpa contoh.
-2. **Critic punya gigi.** Naskah datar dikembalikan, bukan diterima. Maks dua iterasi, lalu `interrupt()` ke bos.
-3. **Model bisa diganti satu baris.** `MODEL_WRITER=claude-sonnet-5-5`. Tanpa ubah kode.
-4. **Eval harness dibangun di fase 7**, bukan fase 8, supaya keputusan ganti model berbasis data.
-5. **Perbandingan A/B wajib** sebelum keputusan. Protokol di §6.
+1. **Few-shot in the prompt.** `docs/CRAFT.md` holds 3 golden scripts. Concrete examples raise a cheap Writer's output more than upgrading the model class without examples.
+2. **The Critic has teeth.** Flat scripts are returned, not accepted. Two iterations maximum, then `interrupt()` to the boss.
+3. **The model is swappable in one line.** `MODEL_WRITER=claude-sonnet-5-5`. No code change.
+4. **The eval harness is built in phase 7**, not phase 8, so the decision to change models rests on data.
+5. **A/B comparison is mandatory** before the decision. Protocol in §6.
 
-**Plafon realistis dengan Writer termurah: rapi dan jelas, belum tentu berkilau.** Itu konsekuensi yang diterima secara sadar, dan eval akan mengukurnya — bukan menyembunyikannya.
+**A realistic ceiling with the cheapest Writer: neat and clear, not necessarily brilliant.** That is a knowingly accepted consequence, and eval will measure it — not hide it.
 
 ---
 
 ## 5. Override
 
-Berlapis, dari paling spesifik ke paling umum:
+Layered, from most specific to most general:
 
 ```bash
-# per peran
+# per role
 MODEL_WRITER=claude-sonnet-5-5
 MODEL_MATCHER=deepseek/deepseek-v4.1-flash
 MODEL_CRITIC=claude-haiku-5-5
 MODEL_CURATOR=deepseek/deepseek-v4.1-flash
 
-# override borongan (mengikuti pola referensi)
+# blanket override (following the reference pattern)
 MODEL_NAME=stealth/crouton-alpha
 ```
 
-Aturan:
+Rules:
 
-- `MODEL_NAME` menimpa semua peran sekaligus; berguna untuk uji gratis.
-- Variabel per peran menang atas `MODEL_NAME`.
-- Tanpa override apa pun, nilai default di §2 berlaku.
-- Reasoning effort: low untuk semua peran kecuali Writer (medium). Model tanpa dukungan effort tidak diberi parameter itu.
-- Override dicatat di `run.json`. Run yang tidak mencatat model tidak dapat direproduksi.
-
----
-
-## 6. Protokol ganti Writer
-
-Jangan ganti berdasarkan kesan. Ikuti ini:
-
-1. Ambil 10 `Combo` yang sama. Jalankan Writer kandidat dan Writer cadangan pada input identik.
-2. Hasilkan 10 naskah dari masing-masing.
-3. Nilai dengan `narathor eval` pada metrik yang sama: `craft_pass_rate`, `citation_violation_rate`, `hook_payoff_violation_rate`.
-4. Baca kesepuluh pasang naskah tanpa tahu mana yang mana. Pilih yang lebih baik per pasangan.
-5. Kalau kandidat menang di ≥ 7 dari 10 dan `craft_pass_rate` lebih tinggi → ganti. Selain itu → pertahankan.
-6. Catat hasilnya di `docs/STATUS.md` tabel perbandingan.
-
-Tanpa langkah 4 (uji buta), keputusan akan dipengaruhi merek model, bukan mutu keluaran.
+- `MODEL_NAME` overrides every role at once; useful for free tests.
+- Per-role variables win over `MODEL_NAME`.
+- With no override, the defaults in §2 apply.
+- Reasoning effort: low for every role except the Writer (medium). Models without effort support are not given the parameter.
+- Overrides are recorded in `run.json`. A run that does not record its models cannot be reproduced.
 
 ---
 
-## 7. Reasoning effort & parameter
+## 6. Writer replacement protocol
 
-| Peran | Effort | Catatan |
+Do not change based on impression. Follow this:
+
+1. Take the same 10 `Combo`s. Run the candidate Writer and the backup Writer on identical input.
+2. Produce 10 scripts from each.
+3. Score with `narathor eval` on the same metrics: `craft_pass_rate`, `citation_violation_rate`, `hook_payoff_violation_rate`.
+4. Read the ten script pairs without knowing which is which. Pick the better one per pair.
+5. If the candidate wins in ≥ 7 of 10 and `craft_pass_rate` is higher → switch. Otherwise → keep.
+6. Record the result in the `docs/STATUS.md` comparison table.
+
+Without step 4 (the blind test), the decision will be influenced by the model brand, not by output quality.
+
+---
+
+## 7. Reasoning effort & parameters
+
+| Role | Effort | Note |
 |---|---|---|
-| Curator | low | Klasifikasi; kedalaman tidak membantu |
-| Matcher | low | Perakitan; kedalaman membantu pada combo rumit, tapi tidak default |
-| Writer | medium | Satu-satunya tempat kedalaman berpengaruh pada mutu prosa |
-| Critic | low | Penilaian gate; instruksi eksplisit lebih penting daripada penalaran dalam |
-| Eval | off | Uji pipeline; tidak menilai mutu |
+| Curator | low | Classification; depth does not help |
+| Matcher | low | Assembly; depth helps on complicated combos, but not by default |
+| Writer | medium | The only place depth affects prose quality |
+| Critic | low | Gate judging; explicit instruction matters more than deep reasoning |
+| Eval | off | Pipeline testing; does not judge quality |
 
-`max_retries=0` di level client. Retry ditangani `ModelRetryMiddleware`, bukan SDK.
+`max_retries=0` at the client level. Retries are handled by `ModelRetryMiddleware`, not the SDK.
 
 ---
 
-## 8. Yang tidak boleh
+## 8. Not allowed
 
-- Mengarang id model. Semua id di dokumen ini berasal dari katalog.
-- Memakai model mahal untuk peran yang bisa heuristik (Indexer).
-- Memakai model murah untuk Critic. Critic yang longgar membuat seluruh gate kehilangan arti.
-- Mengganti model tanpa eval.
-- Menyembunyikan model yang dipakai. Setiap `run.json` mencantumkan model per peran.
-- Memakai model berbeda antara run produksi dan run eval pada metrik yang dibandingkan.
+- Inventing model ids. Every id in this document comes from the catalogue.
+- Using an expensive model for a role that can be heuristic (Indexer).
+- Using a cheap model for the Critic. A lenient Critic makes every gate meaningless.
+- Changing a model without an eval.
+- Hiding which model was used. Every `run.json` lists the model per role.
+- Using different models between a production run and an eval run on the metric being compared.

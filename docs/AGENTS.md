@@ -1,90 +1,90 @@
 # Agents
 
-Lima peran, satu graf, dan mekanisme konkurensi yang mengaturnya.
+Five roles, one graph, and the concurrency mechanism that governs them.
 
-Dokumen ini menjawab dua pertanyaan yang sering tertinggal: **di mana bagian yang mengatur lima agent bekerja bersamaan**, dan **framework apa yang dipakai**.
+This document answers two questions that are usually left behind: **where the part that makes five agents work at once lives**, and **which framework is used**.
 
 ---
 
 ## 1. Framework
 
-| Lapisan | Teknologi | Peran |
+| Layer | Technology | Role |
 |---|---|---|
-| Orkestrasi peran | **LangGraph `StateGraph`** | Graf lima node, state bersama, edge kondisional |
-| Fan-out paralel | **LangGraph `Send`** | Mengirim N unit kerja ke node yang sama secara paralel |
-| Batas konkurensi | **`max_concurrency`** di config invoke | Menegakkan maksimal 5 unit berjalan bersamaan |
-| Durabilitas | **LangGraph checkpointer** (sinkron) | Simpan state tiap node; resume setelah crash |
-| Persetujuan manusia | **LangGraph `interrupt()`** | Berhenti saat Critic borderline, lanjut setelah bos memutuskan |
-| Supervisor | **LangChain `create_agent`** | Merencanakan urutan kerja, memilih unit, meringkas |
-| Tracing | **Langfuse** (opsional) | Satu session per run, satu span per peran |
-| Model | **Command Code Provider API** via LangChain | Lihat `docs/MODELS.md` |
+| Role orchestration | **LangGraph `StateGraph`** | Five-node graph, shared state, conditional edges |
+| Parallel fan-out | **LangGraph `Send`** | Dispatches N work units to the same node in parallel |
+| Concurrency limit | **`max_concurrency`** in the invoke config | Enforces at most 5 units running at once |
+| Durability | **LangGraph checkpointer** (synchronous) | Saves state after each node; resumes after a crash |
+| Human approval | **LangGraph `interrupt()`** | Stops on a borderline Critic, continues after the boss decides |
+| Supervisor | **LangChain `create_agent`** | Plans the work order, picks units, summarises |
+| Tracing | **Langfuse** (optional) | One session per run, one span per role |
+| Model | **Command Code Provider API** via LangChain | See `docs/MODELS.md` |
 
-Semua panggilan model lewat LangChain chat model, bukan subprocess CLI. Pemilihannya ada di `agent/models.py` dan dapat diganti per peran lewat environment.
+All model calls go through a LangChain chat model, never a CLI subprocess. Selection lives in `agent/models.py` and can be overridden per role through the environment.
 
 ---
 
-## 2. Lima peran
+## 2. The five roles
 
-| Peran | Lingkup | Input | Output | Model |
+| Role | Scope | Input | Output | Model |
 |---|---|---|---|---|
-| **Curator** | channel + brief | `NarrativeBrief`, daftar video | `VideoSelection[]` + alasan | LLM murah |
-| **Indexer** | per video | `TranscriptDoc` | `Segment[]` + `kind` + fitur | **tanpa LLM** |
-| **Matcher** | per tesis kandidat | `SegmentCard[]` lintas video | `Combo[]` (2–5 segmen, ≥2 video) | LLM murah |
-| **Writer** | per `Combo` | combo, segmen penuh, brief, `CRAFT.md` | `ShortScript` + sitasi | LLM (lihat `MODELS.md`) |
-| **Critic** | per `ShortScript` | script, transkrip, soul, 7 gate | `Audit {gates, cites_ok, verdict, pressed[], reason}` | LLM instruction-following |
+| **Curator** | channel + brief | `NarrativeBrief`, video list | `VideoSelection[]` + reasons | cheap LLM |
+| **Indexer** | per video | `TranscriptDoc` | `Segment[]` + `kind` + features | **no LLM** |
+| **Matcher** | per candidate thesis | `SegmentCard[]` across videos | `Combo[]` (2–5 segments, >=2 videos) | cheap LLM |
+| **Writer** | per `Combo` | combo, full segments, brief, `CRAFT.md` | `ShortScript` + citations | LLM (see `MODELS.md`) |
+| **Critic** | per `ShortScript` | script, transcript, soul, 7 gates | `Audit {gates, cites_ok, verdict, pressed[], reason}` | instruction-following LLM |
 
 ### 2.1 Curator
 
-Menentukan video mana yang masuk lingkup, dan mengapa. Memberi `niche_consistency_score` — seberapa konsisten topik video dengan tesis brief.
+Decides which videos are in scope, and why. Assigns `niche_consistency_score` — how consistent a video's topic is with the brief's thesis.
 
-Peran ini lebih penting daripada perkiraan awal. Karena naskah dibangun dari ucapan sumber, memilih pustaka yang tepat adalah keputusan kriya paling berpengaruh, jauh sebelum satu kalimat ditulis.
+This role matters more than the initial estimate. Because a script is built from what the source said, choosing the right library is the most influential craft decision, long before a single sentence is written.
 
 ### 2.2 Indexer
 
-**Tidak memanggil model.** Segmentasi transkrip dan perhitungan fitur sepenuhnya heuristik:
+**Calls no model.** Transcript segmentation and feature computation are entirely heuristic:
 
-- pembagian pada jeda > 0.8s dan penanda kalimat
-- deteksi filler (`jadi gini`, `apa ya`, `gimana ya`, `oke guys`)
-- deteksi pembuka administratif (`sebelum itu`, `di video kali ini`)
+- splitting on pauses > 0.8s and sentence markers
+- filler detection (`jadi gini`, `apa ya`, `gimana ya`, `oke guys`)
+- administrative opening detection (`sebelum itu`, `di video kali ini`)
 - `kind`: thesis, story, number, rebuttal, close
-- ekstraksi `key_quote` per segmen
+- `key_quote` extraction per segment
 
-Keluaran: `Segment` card ringkas ~200 token, disimpan di database. Inilah yang membuat skala 400 video mungkin.
+Output: a compact `Segment` card of ~200 tokens, stored in the database. This is what makes 400 videos possible at all.
 
 ### 2.3 Matcher
 
-Menemukan kombinasi. Satu unit kerja = satu tesis kandidat.
+Finds combinations. One work unit = one candidate thesis.
 
-Aturan yang ditegakkan (bukan diharapkan):
+Rules that are enforced (not hoped for):
 
-- minimal 2 video berbeda
-- tidak boleh kontradiksi antar segmen
-- satu tesis
-- urutan mendukung alur klaim → bukti → konsekuensi → penutup
-- keragaman sumber dinilai
+- at least 2 different videos
+- no contradiction between segments
+- one thesis
+- order supporting claim → evidence → consequence → close
+- source diversity is scored
 
 ### 2.4 Writer
 
-Menulis naskah penuh di atas satu `Combo`: hook, beats, payoff, overlay, title, caption.
+Writes the full script on top of one `Combo`: hook, beats, payoff, overlay, title, caption.
 
-Kewajiban:
+Obligations:
 
-- setiap `beat` dengan `is_claim: true` membawa `citation {video_id, t0, t1, quote}`
-- `quote` wajib **benar-benar ada** di transkrip pada rentang itu
-- `hook` ≤ 7 kata, kata pertama sebelum detik 1
-- `payoff_at_s` < 16 untuk target 13–20s
-- `overlay` ≤ 7 kata per baris
-- menandai apa yang **tidak** dipakai (`discarded[]`)
+- every `beat` with `is_claim: true` carries a `citation {video_id, t0, t1, quote}`
+- `quote` must **actually exist** in the transcript across that range
+- `hook` <= 7 words, first word before second 1
+- `payoff_at_s` < 16 for the 13–20s target
+- `overlay` <= 7 words per line
+- mark what was **not** used (`discarded[]`)
 
 ### 2.5 Critic
 
-Menjalankan tujuh gate dari `docs/CRAFT.md` §6. Gagal satu → kembalikan ke Writer. Maks dua iterasi, lalu `interrupt()`.
+Runs the seven gates from `docs/CRAFT.md` §6. One failure → return to the Writer. Two iterations maximum, then `interrupt()`.
 
-Critic juga memverifikasi sitasi secara independen. Writer yang menyatakan sitasi valid tidak dipercaya begitu saja; backend mencocokkan, Critic memeriksa kewajaran kutipan terhadap klaim.
+The Critic also verifies citations independently. A Writer claiming a citation is valid is not trusted; the backend matches it, and the Critic checks whether the quotation is reasonable for the claim.
 
 ---
 
-## 3. Graf
+## 3. The graph
 
 ```
                     ┌────────────┐
@@ -105,172 +105,172 @@ Critic juga memverifikasi sitasi secara independen. Writer yang menyatakan sitas
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
-           lolos      kembalikan    interrupt
-           (END)      (→ write)     (tunggu bos)
+           pass         return       interrupt
+           (END)      (→ write)     (wait for boss)
 ```
 
-Node `index`, `match`, `write`, dan `critique` adalah target `Send`. Satu node dapat menerima N unit sekaligus — di sinilah paralelisme terjadi.
+The nodes `index`, `match`, `write`, and `critique` are `Send` targets. A single node can receive N units at once — this is where parallelism happens.
 
 ---
 
-## 4. Konkurensi — spesifikasi eksplisit
+## 4. Concurrency — explicit specification
 
 ### 4.1 Fan-out
 
 ```python
-# supervisor memutuskan unit, bukan menjalankan loop
+# the supervisor decides units, it does not run a loop
 sends = [Send("index", {"video_id": v}) for v in selected_videos]
 ```
 
-Tidak ada `for` yang menunggu satu per satu. Tidak ada `asyncio.gather` buatan sendiri.
+No `for` waiting one by one. No hand-rolled `asyncio.gather`.
 
-### 4.2 Batas
+### 4.2 Limit
 
 ```python
 graph.invoke(state, config={"max_concurrency": 5})
 ```
 
-- Default **5**. Dapat diubah: `--concurrency N` atau `MAX_CONCURRENCY`.
-- Backend menolak `Send` yang membuat unit berjalan melebihi batas. Ini invarian, bukan harapan.
-- Nilai 0, negatif, atau tak hingga → ditolak saat startup.
+- Default **5**. Changeable: `--concurrency N` or `MAX_CONCURRENCY`.
+- The backend rejects a `Send` that would push running units above the limit. This is an invariant, not a hope.
+- A value of 0, negative, or infinite → rejected at startup.
 
-**Mengapa 5.** Cukup untuk menutupi latensi model, cukup rendah agar biaya per menit terkendali, dan cukup kecil agar log tetap terbaca saat debug.
+**Why 5.** Enough to cover model latency, low enough to keep cost per minute in check, and small enough to keep logs readable while debugging.
 
 ### 4.3 Thread per unit
 
-| Peran | `thread_id` |
+| Role | `thread_id` |
 |---|---|
 | Indexer | `{narrative_id}:{video_id}` |
 | Matcher | `{narrative_id}:thesis-{n}` |
 | Writer | `{narrative_id}:combo-{combo_id}` |
 | Critic | `{narrative_id}:combo-{combo_id}` |
 
-Thread stabil → resume menemukan state yang sama. Writer dan Critic berbagi thread karena Critic harus melihat riwayat iterasi.
+A stable thread means resume finds the same state. Writer and Critic share a thread because the Critic must see the iteration history.
 
-### 4.4 Idempotensi
+### 4.4 Idempotency
 
-Kunci unit:
+Unit key:
 
 ```
 unit_key = hash(unit_id, prompt_version, brief_hash, soul_version, craft_version)
 ```
 
-Node yang dijalankan ulang setelah crash tidak menggandakan biaya atau data. Hasil yang sudah ada dengan `unit_key` sama dikembalikan dari cache.
+A node re-run after a crash does not duplicate cost or data. An existing result with the same `unit_key` is returned from cache.
 
-Konsekuensi yang disengaja: **ganti soul atau brief menginvalidasi seluruh cache.** Naskah dari konstitusi berbeda tidak boleh dipakai ulang seolah sah.
+Deliberate consequence: **changing the soul or the brief invalidates the entire cache.** Scripts from a different constitution may not be reused as if they were valid.
 
-### 4.5 Durabilitas
+### 4.5 Durability
 
-Checkpointer menyimpan state setelah setiap node. Run yang dibunuh:
+The checkpointer saves state after every node. A run that is killed:
 
-- dilanjutkan pada node terakhir yang selesai
-- **tidak** menambah `attempts`
-- memakai `thread_id` yang sama
+- continues from the last completed node
+- does **not** increase `attempts`
+- uses the same `thread_id`
 
-Sinkron, bukan async. Checkpointer async Postgres tidak bekerja dengan event loop bawaan Windows.
+Synchronous, not async. The async Postgres checkpointer does not work with Windows' default event loop.
 
-### 4.6 Cap panggilan model
+### 4.6 Model call cap
 
-| Peran | Maks panggilan per unit |
+| Role | Max calls per unit |
 |---|---|
 | Curator | 1 |
 | Indexer | 0 |
 | Matcher | 1 |
-| Writer | 3 (tulis + maks 2 revisi) |
+| Writer | 3 (write + max 2 revisions) |
 | Critic | 1 |
 
-Lewat cap → node gagal terkontrol. Bukan loop, bukan diam-diam berhenti. Dihitung di tabel `agent_calls`.
+Past the cap → the node fails in a controlled way. Not a loop, not a silent stop. Counted in the `agent_calls` table.
 
 ### 4.7 Retry
 
-`ModelRetryMiddleware`, satu retry untuk error provider atau timeout. Gagal dua kali → unit ditandai `deferred`, run lanjut. Unit yang `deferred` dilaporkan di akhir, tidak menghentikan run.
+`ModelRetryMiddleware`, one retry for provider error or timeout. Two failures → the unit is marked `deferred`, the run continues. Deferred units are reported at the end and do not stop the run.
 
-### 4.8 Isolasi kegagalan
+### 4.8 Failure isolation
 
-Satu unit gagal tidak menghentikan run. Run menyelesaikan unit lain, lalu melaporkan:
+One failing unit does not stop the run. The run finishes other units, then reports:
 
 ```
-selesai: 27   dikembalikan: 2   ditunda: 1
+done: 27   returned: 2   deferred: 1
 ```
 
-### 4.9 Merge deterministik
+### 4.9 Deterministic merge
 
-Hasil digabung dengan sort `script_id`, bukan urutan kedatangan. Dua run dengan input sama menghasilkan urutan sama.
+Results are merged sorted by `script_id`, not by arrival order. Two runs with the same input produce the same order.
 
 ---
 
-## 5. Batas skala
+## 5. Scale limits
 
-400 video × 1 jam ≈ **5 juta token** transkrip. Tidak muat di context 1M mana pun, termasuk yang terbesar di katalog.
+400 videos × 1 hour ≈ **5 million tokens** of transcript. That does not fit in any 1M context, including the largest in the catalogue.
 
-Karena itu matching tiga tahap:
+So matching is three-stage:
 
-**Tahap 1 — kartu segmen.** Indexer menghasilkan ~200 token per segmen, ~10 segmen per video. 400 video → ~800.000 token tersimpan di database, bukan di context.
+**Stage 1 — segment cards.** The Indexer produces ~200 tokens per segment, ~10 segments per video. 400 videos → ~800,000 tokens stored in the database, not in context.
 
-**Tahap 2 — klaster tesis.** Batch 50 kartu per panggilan. Model murah membaca kartu, bukan transkrip. Menghasilkan 30–50 tesis kandidat.
+**Stage 2 — thesis clusters.** Batches of 50 cards per call. A cheap model reads cards, not transcripts. Produces 30–50 candidate theses.
 
-**Tahap 3 — rakit combo.** Untuk satu tesis, ambil hanya segmen relevan (berdasarkan `topic` dan `kind`). Writer menerima 2–5 segmen penuh, bukan seluruh pustaka.
+**Stage 3 — combo assembly.** For one thesis, take only relevant segments (by `topic` and `kind`). The Writer receives 2–5 full segments, not the whole library.
 
-Tanpa tiga tahap ini, Matcher gagal karena context penuh dan biaya meledak secara kuadratik.
+Without these three stages, the Matcher fails on a full context and cost explodes quadratically.
 
 ---
 
-## 6. Invarian yang ditegakkan backend
+## 6. Invariants enforced by the backend
 
-Prompt bisa diabaikan model. Endpoint tidak bisa.
+A prompt can be ignored by a model. An endpoint cannot.
 
-| Invarian | Kapan diperiksa | Akibat pelanggaran |
+| Invariant | When checked | Consequence of violation |
 |---|---|---|
-| Soul hash cocok | Awal **setiap** request agent | 409, agent berhenti |
-| Brief valid, tidak ambigu, tidak kedaluwarsa | Sebelum run dibuat | 400 + pasal |
-| `values_blocked` tidak bocor | Saat menyimpan `ShortScript` | 400, naskah dibuang |
-| Setiap `is_claim` punya sitasi valid | Saat menyimpan | 400, naskah ditolak |
-| `quote` benar-benar ada di transkrip | Saat menyimpan | 400, naskah ditolak |
-| `payoff_pays_off` | Saat menyimpan | 400, dikembalikan ke Writer |
-| Tujuh gate kriya | Saat menyimpan | 400, dikembalikan |
-| Tidak ada naskah ganda | Saat menyimpan | Idempoten, 200 |
-| Concurrency ≤ batas | Saat `Send` | Tolak unit |
-| Cap panggilan model | Setiap panggilan | Tolak, tandai gagal |
+| Soul hash matches | Start of **every** agent request | 409, the agent stops |
+| Brief valid, not ambiguous, not expired | Before a run is created | 400 + article |
+| `values_blocked` does not leak | When saving a `ShortScript` | 400, script discarded |
+| Every `is_claim` has a valid citation | When saving | 400, script rejected |
+| `quote` actually exists in the transcript | When saving | 400, script rejected |
+| `payoff_pays_off` | When saving | 400, returned to the Writer |
+| Seven craft gates | When saving | 400, returned |
+| No duplicate script | When saving | Idempotent, 200 |
+| Concurrency <= limit | On `Send` | Unit rejected |
+| Model call cap | Every call | Rejected, marked failed |
 
 ---
 
-## 7. Testing tanpa model
+## 7. Testing without a model
 
-Wajib. Tidak ada test yang memanggil model nyata.
+Mandatory. No test calls a real model.
 
-Stub model per peran mengembalikan respons skrip. Yang dibuktikan:
+A stub model per role returns canned responses. What gets proven:
 
-1. Fan-out menghasilkan N unit sesuai jumlah `Send`.
-2. `max_concurrency` tidak pernah terlampaui — diukur dari jumlah unit berjalan bersamaan di log, bukan dari asumsi.
-3. Retry berjalan pada error provider, lalu unit jadi `deferred`.
-4. `interrupt()` menghentikan graf dan melanjutkannya saat resume.
-5. Unit gagal tidak menghentikan run.
-6. Gate sitasi menolak klaim tanpa rujukan.
-7. Gate khas menolak naskah yang bisa ditukar dengan short lain.
+1. Fan-out produces N units matching the number of `Send`s.
+2. `max_concurrency` is never exceeded — measured from concurrently running units in the log, not assumed.
+3. Retry runs on provider error, then the unit becomes `deferred`.
+4. `interrupt()` stops the graph and continues it on resume.
+5. A failing unit does not stop the run.
+6. The citation gate rejects a claim without a reference.
+7. The distinctiveness gate rejects a script that could be swapped with another short.
 
-Test berjalan tanpa jaringan. Kalau sebuah test butuh jaringan, test itu salah rancang.
-
----
-
-## 8. Yang tidak boleh
-
-- Mengganti fan-out `Send` dengan loop sekuensial.
-- Menjalankan `max_concurrency` tanpa batas.
-- Menyimpan hasil sebelum backend memverifikasi sitasi.
-- Membiarkan agent membaca `data/` atau database langsung.
-- Memakai model berbeda antara uji dan produksi pada metrik yang dibandingkan.
-- Membuat worker baru di luar lima peran tanpa memperbarui dokumen ini lebih dulu.
-- Menunda soul check sampai setelah naskah ditulis.
+Tests run without network. If a test needs network, that test is badly designed.
 
 ---
 
-## 9. Hubungan dengan dokumen lain
+## 8. Not allowed
 
-| Dokumen | Hubungan |
+- Replacing the `Send` fan-out with a sequential loop.
+- Running `max_concurrency` unbounded.
+- Storing a result before the backend verifies citations.
+- Letting the agent read `data/` or the database directly.
+- Using different models between tests and production on the metric being compared.
+- Creating a new worker outside the five roles without updating this document first.
+- Deferring the soul check until after a script is written.
+
+---
+
+## 9. Relationship to other documents
+
+| Document | Relationship |
 |---|---|
-| `SOUL.md` | Diperiksa di awal setiap request |
-| `docs/CRAFT.md` | Tujuh gate yang dijalankan Critic |
-| `docs/MODELS.md` | Model per peran dan cara override |
-| `docs/NARRATIVE.md` | Brief yang dibaca Curator dan Writer |
-| `docs/TECH_STACK.md` | Bagian sistem dan API |
-| `docs/PLAN.md` | Urutan pembangunan |
+| `SOUL.md` | Checked at the start of every request |
+| `docs/CRAFT.md` | The seven gates the Critic runs |
+| `docs/MODELS.md` | Model per role and how to override |
+| `docs/NARRATIVE.md` | The brief the Curator and Writer read |
+| `docs/TECH_STACK.md` | System parts and API |
+| `docs/PLAN.md` | Build order |

@@ -1,4 +1,4 @@
-"""Akses database. SQLAlchemy Core, satu query untuk SQLite dan Postgres."""
+"""Database access. SQLAlchemy Core, one query for SQLite and Postgres."""
 
 from __future__ import annotations
 
@@ -157,7 +157,7 @@ cache_t = Table(
 
 
 def build_engine(url: str) -> Engine:
-    """Buat engine dengan schema_translate_map agar jalan di SQLite maupun Postgres."""
+    """Build an engine with schema_translate_map so it runs on SQLite and Postgres."""
     translate = {"schema_translate_map": {SCHEMA: None}}
     if url.startswith("sqlite"):
         if ":memory:" in url or url.endswith(":memory:"):
@@ -181,7 +181,7 @@ _engine: Engine | None = None
 
 
 def get_engine() -> Engine:
-    """Engine proses-tunggal, dibuat sekali."""
+    """Process-wide engine, built once."""
     global _engine
     if _engine is None:
         _engine = build_engine(get_settings().database_url)
@@ -189,13 +189,13 @@ def get_engine() -> Engine:
 
 
 def set_engine(engine: Engine | None) -> None:
-    """Ganti engine, dipakai test dan CLI."""
+    """Swap the engine, used by tests and the CLI."""
     global _engine
     _engine = engine
 
 
 def create_schema(engine: Engine) -> None:
-    """Buat seluruh tabel bila belum ada."""
+    """Create every table if it does not exist."""
     metadata.create_all(engine)
 
 
@@ -205,7 +205,7 @@ def create_schema(engine: Engine) -> None:
 
 
 def read_library(data_dir: Path) -> tuple[Channel | None, list[Video], dict[str, TranscriptDoc]]:
-    """Baca pustaka dari data/ tanpa menulis apa pun ke sana."""
+    """Read the library from data/ without writing anything back."""
     channel: Channel | None = None
     channel_file = data_dir / "channel.json"
     if channel_file.exists():
@@ -227,7 +227,7 @@ def read_library(data_dir: Path) -> tuple[Channel | None, list[Video], dict[str,
 
 
 def seed(engine: Engine, data_dir: Path | None = None) -> dict[str, int]:
-    """Isi tabel dari data/ bila kosong. Idempoten."""
+    """Seed tables from data/ when empty. Idempotent."""
     data_dir = data_dir or get_settings().data_dir
     channel, videos, transcripts = read_library(data_dir)
     now = datetime.now(UTC)
@@ -285,7 +285,7 @@ def seed(engine: Engine, data_dir: Path | None = None) -> dict[str, int]:
 
 
 def ensure_ready(engine: Engine | None = None, data_dir: Path | None = None) -> dict[str, int]:
-    """Buat schema lalu seed. Aman dipanggil berulang."""
+    """Create the schema then seed. Safe to call repeatedly."""
     eng = engine or get_engine()
     create_schema(eng)
     return seed(eng, data_dir)
@@ -297,7 +297,7 @@ def ensure_ready(engine: Engine | None = None, data_dir: Path | None = None) -> 
 
 
 def fetch_channel(engine: Engine) -> Channel | None:
-    """Ambil channel pertama."""
+    """Fetch the first channel."""
     with engine.connect() as conn:
         row = conn.execute(select(channels_t)).mappings().first()
     if row is None:
@@ -311,7 +311,7 @@ def fetch_channel(engine: Engine) -> Channel | None:
 
 
 def fetch_videos(engine: Engine) -> list[Video]:
-    """Seluruh video dalam pustaka, urut video_id."""
+    """Every video in the library, ordered by video_id."""
     with engine.connect() as conn:
         rows = conn.execute(select(videos_t).order_by(videos_t.c.video_id)).mappings().all()
     return [
@@ -327,7 +327,7 @@ def fetch_videos(engine: Engine) -> list[Video]:
 
 
 def fetch_video(engine: Engine, video_id: str) -> Video | None:
-    """Satu video, None bila tidak ada."""
+    """One video, None when missing."""
     with engine.connect() as conn:
         row = (
             conn.execute(select(videos_t).where(videos_t.c.video_id == video_id)).mappings().first()
@@ -344,7 +344,7 @@ def fetch_video(engine: Engine, video_id: str) -> Video | None:
 
 
 def fetch_transcript(engine: Engine, video_id: str) -> TranscriptDoc | None:
-    """Transkrip satu video, None bila belum di-ingest."""
+    """One video transcript, None when not yet ingested."""
     with engine.connect() as conn:
         row = (
             conn.execute(select(transcripts_t).where(transcripts_t.c.video_id == video_id))

@@ -1,171 +1,171 @@
 # Craft
 
-Standar kriya Narathor. Ini dokumen editorial, bukan dokumen teknik.
+Narathor's craft standard. This is an editorial document, not a technical one.
 
-Yang membedakan karya bagus dari karya benar bukan selera — tapi **gate**. Dokumen ini menetapkan gate itu, menerjemahkan standar kerja rumah produksi besar ke dalam pekerjaan penyusunan naskah dari pustaka video.
-
----
-
-## 1. Apa yang sesungguhnya dikerjakan
-
-Narathor bukan penulis yang mengarang. Ia **penyusun**.
-
-Bahan mentahnya adalah ucapan orang lain — ratusan jam, dari puluhan video, dari satu channel yang layak didengar. Tugasnya menemukan, dari lautan itu, beberapa potong yang bila disatukan membentuk satu gagasan utuh yang belum pernah berdiri sendiri sebelumnya.
-
-Karena itu kriya di sini punya dua sisi yang tidak bisa dipisah: **pemilihan** dan **penulisan**.
-
-Pemilihan yang buruk tidak bisa diselamatkan oleh penulisan bagus. Penulisan yang buruk membuang pemilihan yang bagus.
+What separates good work from correct work is not taste — it is **gates**. This document sets those gates, translating the working standards of large production houses into the job of assembling scripts from a video library.
 
 ---
 
-## 2. Aturan kombinasi
+## 1. What is actually being done
 
-Sebuah naskah dibangun di atas `Combo` — himpunan segmen.
+Narathor is not a writer who invents. It is an **assembler**.
 
-| Aturan | Konsekuensi bila dilanggar |
+Its raw material is other people's speech — hundreds of hours, from dozens of videos, from one channel worth hearing. The job is to find, in that ocean, a few pieces that when joined form one whole idea that never stood on its own before.
+
+So craft here has two inseparable sides: **selection** and **writing**.
+
+Bad selection cannot be rescued by good writing. Bad writing throws away good selection.
+
+---
+
+## 2. Combination rules
+
+A script is built on a `Combo` — a set of segments.
+
+| Rule | Consequence when violated |
 |---|---|
-| **Minimal 2 video berbeda** | Bukan kombinasi, melainkan potongan. Ditolak. |
-| **Satu tesis** | Semua segmen harus melayani satu gagasan. Kalau tidak, pecah jadi dua naskah atau buang segmen. |
-| **Tidak boleh saling membantah** | Kalau segmen A dan B saling meniadakan, seluruh combo dibuang. Bukan dipilih salah satu. |
-| **Alur: klaim → bukti/cerita → konsekuensi → penutup** | Urutan yang melompat membuat penonton tersesat meski tiap segmen bagus. |
-| **Keragaman sumber dinilai** | Tiga video berbeda mengalahkan tiga segmen dari satu video. |
-| **Satu video boleh muncul lebih dari sekali, tapi tidak dihitung sebagai keragaman** | Combo dengan dua segmen dari video A dan satu dari video B tetap sah; combo dengan dua segmen dari video A saja tidak sah. |
+| **At least 2 different videos** | It is not a combination, it is a clip. Rejected. |
+| **One thesis** | Every segment must serve one idea. If not, split into two scripts or drop a segment. |
+| **No mutual contradiction** | If segment A and B cancel each other out, the whole combo is discarded. Not one side picked. |
+| **Arc: claim → evidence/story → consequence → close** | A jumping order loses the viewer even when each segment is good. |
+| **Source diversity is scored** | Three different videos beat three segments from one video. |
+| **One video may appear more than once, but does not count as diversity** | A combo with two segments from video A and one from video B is still valid; a combo with only two segments from video A is not. |
 
-**Mengapa satu tesis wajib.** Penonton short tidak punya waktu membangun konteks. Dua gagasan dalam 15 detik berarti nol gagasan yang tersisa.
+**Why one thesis is mandatory.** A short viewer has no time to build context. Two ideas in 15 seconds means zero ideas left behind.
 
-**Mengapa combo kontradiktif dibuang seluruhnya.** Memilih salah satu berarti menyembunyikan bahwa sumber pernah mengatakan sebaliknya. Itu pelanggaran Pasal 7 — transparansi.
+**Why a contradictory combo is discarded whole.** Picking one side means hiding that the source once said the opposite. That violates Article 7 — transparency.
 
 ---
 
-## 3. Standar yang diadopsi
+## 3. Standards adopted
 
-| Standar | Terjemahan di Narathor |
+| Standard | Translation in Narathor |
 |---|---|
-| **Single-minded proposition** | Satu tesis per naskah. Diuji: bisa diringkas satu kalimat tanpa kehilangan apa pun? |
-| **Insight first** | Hook memuat ketegangan, bukan topik. "Ini soal uang" bukan hook. "Uang kamu bocor tiap bulan" hook. |
-| **Hook sebagai kontrak** | Apa pun yang dijanjikan pembuka wajib muncul di isi. |
-| **Craft is subtraction** | Writer wajib menandai apa yang **tidak** dipakai. Naskah 15 detik dari 400 video adalah karya penyuntingan. |
-| **No dead air** | Filler dan jeda panjang diukur, bukan dirasakan. |
-| **Read-it-aloud** | Teks layar ≤ 7 kata per baris, satu klausa per baris. |
-| **Consistency is the brand** | Satu niche. Channel yang melompat topik mengaburkan sinyal audiens. |
+| **Single-minded proposition** | One thesis per script. Tested: can it be summed up in one sentence without losing anything? |
+| **Insight first** | The hook carries tension, not a topic. "This is about money" is not a hook. "Your money leaks every month" is a hook. |
+| **Hook as contract** | Whatever the opening promises must appear in the body. |
+| **Craft is subtraction** | The Writer must mark what is **not** used. A 15-second script from 400 videos is an editing work. |
+| **No dead air** | Fillers and long pauses are measured, not felt. |
+| **Read-it-aloud** | On-screen text ≤ 7 words per line, one clause per line. |
+| **Consistency is the brand** | One niche. A channel that jumps topics blurs the audience signal. |
 
 ---
 
-## 4. Struktur naskah
+## 4. Script structure
 
-### 4.1 Target 13–20 detik
-
-```
-0.0 – 2.0s   HOOK      satu ketegangan, ≤ 7 kata, kata pertama sebelum detik 1
-2.0 – 8.0s   BUKTI     satu alasan konkret; bisa cerita, angka, atau bantahan
-8.0 – 14.0s  KONSEKUENSI  apa artinya bagi penonton
-14.0 – 16.0s PAYOFF    janji dibayar; tidak boleh lewat detik 16
-```
-
-### 4.2 Target 60 detik
+### 4.1 The 13–20 second target
 
 ```
-0.0 – 3.0s    HOOK          satu ketegangan
-3.0 – 15.0s   BABAK I       klaim + alasan mengapa ini penting
-15.0 – 16.0s  PAYOFF AWAL   janji kecil dibayar lebih dulu
-16.0 – 40.0s  BABAK II      bukti, cerita, angka, bantahan
-40.0 – 55.0s  BABAK III     konsekuensi, apa yang berubah
-55.0 – 60.0s  PAYOFF AKHIR  janji utama dibayar + penutup
+0.0 – 2.0s   HOOK         one tension, ≤ 7 words, first word before second 1
+2.0 – 8.0s   EVIDENCE     one concrete reason; a story, a number, or a rebuttal
+8.0 – 14.0s  CONSEQUENCE  what it means for the viewer
+14.0 – 16.0s PAYOFF       promise paid; must not pass second 16
 ```
 
-### 4.3 Aturan yang berlaku di keduanya
+### 4.2 The 60 second target
 
-- Tidak ada kalimat pembuka administratif. Tidak ada "jadi gini", "oke guys", "sebelum itu".
-- Tidak ada penundaan payoff untuk menahan tontonan. Payoff yang ditunda adalah payoff yang tidak dibayar.
-- Kalimat narasi ≤ satu tarikan napas. Kalau lebih, pecah.
-- Setiap `beat` yang menyatakan fakta wajib punya sitasi. Beat penyambung tidak.
-- Teks layar harus bisa dipahami tanpa audio.
+```
+0.0 – 3.0s    HOOK          one tension
+3.0 – 15.0s   ACT I         claim + why this matters
+15.0 – 16.0s  FIRST PAYOFF  a small promise paid early
+16.0 – 40.0s  ACT II        evidence, story, numbers, rebuttal
+40.0 – 55.0s  ACT III       consequence, what changes
+55.0 – 60.0s  FINAL PAYOFF  the main promise paid + close
+```
+
+### 4.3 Rules that apply to both
+
+- No administrative opening line. No "so here's the thing", no "okay guys", no "before that".
+- No delaying the payoff to hold viewing. A delayed payoff is an unpaid payoff.
+- A narrative sentence ≤ one breath. If longer, split it.
+- Every `beat` stating a fact must carry a citation. Connective beats need not.
+- On-screen text must be understandable without audio.
 
 ---
 
-## 5. Tiga uji khas
+## 5. Three signature tests
 
-Tidak ada daftar frasa terlarang. Blacklist membunuh kriya dan mengundang bidal. Penggantinya tiga uji yang dijawab Critic dengan alasan tertulis.
+There is no forbidden phrase list. A blacklist kills craft and invites cliché. Its replacement is three tests the Critic answers in writing.
 
-### Uji tukar
-*Bisakah naskah ini ditukar dengan lima puluh short lain di niche yang sama tanpa ada yang menyadarinya?*
+### Swap test
+*Could this script be swapped with fifty other shorts in the same niche without anyone noticing?*
 
-Kalau ya, naskah itu generik. Bukan karena kalimatnya buruk, tapi karena tidak ada yang khas di dalamnya.
+If yes, the script is generic. Not because the sentences are bad, but because there is nothing distinctive inside.
 
-### Uji tandatangan
-*Adakah satu keputusan editorial yang hanya mungkin muncul dari kombinasi segmen ini?*
+### Signature test
+*Is there one editorial decision that could only come from this combination of segments?*
 
-Misalnya: urutan yang mengubah makna, sambungan antara dua video yang tidak pernah dibicarakan bersama, atau pembacaan ulang atas pernyataan lama. Kalau tidak ada satu pun, naskah itu bisa dibuat mesin mana pun.
+For example: an order that changes the meaning, a connection between two videos never discussed together, or a rereading of an old statement. If there is not one, any machine could have made that script.
 
-### Uji hapus
-*Hapus kalimat paling kreatifnya. Apakah naskahnya masih berjalan sempurna?*
+### Delete test
+*Delete its most creative sentence. Does the script still work perfectly?*
 
-Kalau masih, kalimat itu hiasan — bukan bagian dari karya. Hiasan boleh ada, tapi tidak boleh dihitung sebagai nilai.
+If it does, that sentence is decoration — not part of the work. Decoration may exist, but must not be counted as value.
 
 ---
 
-## 6. Tujuh gate
+## 6. Seven gates
 
-Gagal satu gate = naskah **dikembalikan** ke Writer. Bukan diberi peringatan, bukan diteruskan dengan catatan.
+Failing one gate = the script is **returned** to the Writer. Not warned, not passed along with a note.
 
-| # | Gate | Pertanyaan | Diuji bagaimana |
+| # | Gate | Question | How it is tested |
 |---|---|---|---|
-| 1 | **Satu tesis** | Bisa diringkas satu kalimat? | Critic menulis ringkasannya; kalau butuh dua kalimat, gagal |
-| 2 | **Terlacak** | Setiap klaim punya sitasi valid? | Dicocokkan mesin ke transkrip |
-| 3 | **Dibayar** | Payoff memenuhi janji hook? | Critic membandingkan janji hook dan isi payoff |
-| 4 | **Bunyi tanpa suara** | Teks layar cukup untuk paham? | Critic membaca hanya `overlay` + `title` |
-| 5 | **Tanpa dead air** | Tidak ada filler, tidak ada jeda > 0.8s di badan? | Diukur otomatis |
-| 6 | **Layak enam bulan lagi** | Masih relevan setelah trennya lewat? | Critic menilai ketergantungan pada konteks musiman |
-| 7 | **Khas** | Lolos tiga uji §5? | Critic menjawab ketiganya tertulis |
+| 1 | **One thesis** | Can it be summed up in one sentence? | The Critic writes the summary; if it needs two sentences, it fails |
+| 2 | **Traceable** | Does every claim have a valid citation? | Machine-matched against the transcript |
+| 3 | **Paid** | Does the payoff meet the hook's promise? | The Critic compares the hook's promise and the payoff's content |
+| 4 | **Sounds without sound** | Is the on-screen text enough to understand? | The Critic reads only `overlay` + `title` |
+| 5 | **No dead air** | No filler, no pause > 0.8s in the body? | Measured automatically |
+| 6 | **Worth six months from now** | Still relevant after the trend passes? | The Critic judges dependence on seasonal context |
+| 7 | **Distinctive** | Does it pass the three tests in §5? | The Critic answers all three in writing |
 
-**Maksimal dua iterasi.** Lewat itu → `interrupt()` ke bos. Naskah yang gagal dua kali biasanya menandakan combo-nya yang salah, bukan penulisannya.
-
----
-
-## 7. Merakyat tanpa murahan
-
-"Merakyat" bukan soal slang. Soal beban kognitif.
-
-### Baca satu napas
-Kalimat yang tidak bisa dibaca dalam satu tarikan napas → pecah. Ini mengukur panjang secara fisik, bukan selera.
-
-### Dengar sekali paham
-Penonton yang mendengar sekali harus paham. Kalau perlu diulang → gagal. Naskah tidak boleh mengandalkan penonton memutar ulang.
-
-### Tanpa jargon
-Istilah teknis wajib punya penjelasan di teks layar, atau diganti. Ini bukan menurunkan mutu — ini syarat agar mutu sampai.
-
-**Yang bukan tujuan:** terlihat pintar. Naskah yang membuat penonton merasa bodoh sudah gagal, seakurat apa pun isinya.
+**Two iterations maximum.** Beyond that → `interrupt()` to the boss. A script that fails twice usually signals the combo is wrong, not the writing.
 
 ---
 
-## 8. Yang tetap dijaga
+## 7. Popular without being cheap
 
-Ini larangan **niat**, bukan larangan kata. Kalimat apa pun boleh, niatnya yang diperiksa.
+"Popular" is not about slang. It is about cognitive load.
 
-| Dilarang | Karena |
+### One-breath read
+A sentence that cannot be read in one breath → split it. This measures length physically, not by taste.
+
+### Understand on one listen
+A viewer who hears it once must understand. If it needs repeating → it fails. A script may not rely on the viewer replaying.
+
+### No jargon
+A necessary technical term must be explained in the on-screen text, or replaced. This does not lower quality — it is the condition for quality arriving at all.
+
+**What is not the goal:** looking clever. A script that makes the viewer feel stupid has already failed, however accurate its content.
+
+---
+
+## 8. What is still guarded
+
+These are bans on **intent**, not on words. Any sentence is allowed; the intent is what gets checked.
+
+| Forbidden | Because |
 |---|---|
-| Janji yang tidak dibayar | Pasal 4 |
-| Fakta tanpa sitasi | Pasal 5 |
-| Nilai yang masuk `values_blocked` | Pasal 6 |
-| Clickbait yang menjanjikan lebih dari isi | Pasal 4 |
-| Menahan informasi untuk menahan tontonan | Pasal 4 |
-| Mengeksploitasi ketakutan atau ketidaktahuan | Pasal 6 |
-| Mensyaratkan pembayaran untuk memahami | Pasal 3 |
-| Menyembunyikan bahwa sumber pernah berkata sebaliknya | Pasal 7 |
+| An unpaid promise | Article 4 |
+| A fact without citation | Article 5 |
+| A value in `values_blocked` | Article 6 |
+| Clickbait promising more than the content | Article 4 |
+| Withholding information to hold viewing | Article 4 |
+| Exploiting fear or ignorance | Article 6 |
+| Requiring payment to understand | Article 3 |
+| Hiding that a source once said the opposite | Article 7 |
 
 ---
 
-## 9. Naskah emas
+## 9. Golden scripts
 
-Contoh di bawah adalah **format acuan**, bukan isi nyata. Segmen dan timestamp bersifat ilustratif. Fungsinya: memberi Writer model bentuk, irama, dan cara menyitasi.
+The examples below are a **reference format**, not real content. Segments and timestamps are illustrative. Their job: give the Writer a model of shape, rhythm, and how to cite. Script text stays in Indonesian because the product writes Indonesian short scripts.
 
-### Emas 1 — target 15 detik, arketipe counter-intuitive
+### Gold 1 — 15 second target, counter-intuitive archetype
 
 ```yaml
 script_id: gold_001
 target_duration_s: 15
-single_minded_proposition: "Menabung tanpa tahu ke mana uang pergi bukan menabung, tapi menunda kebocoran."
+single_minded_proposition: "Saving without knowing where money goes is not saving, it is delaying the leak."
 hook:
   text: "Menabung itu bukan solusi."
   word_count: 5
@@ -186,14 +186,14 @@ overlay:
 title: "Kenapa menabung saja tidak cukup"
 ```
 
-**Yang membuatnya lolos:** hook menantang keyakinan umum (counter-intuitive), payoff membayar janji dalam lima kata, dua segmen dari dua video berbeda, setiap klaim bersitasi, teks layar berdiri sendiri tanpa audio.
+**Why it passes:** the hook challenges a common belief (counter-intuitive), the payoff pays the promise in five words, two segments from two different videos, every claim cited, on-screen text stands alone without audio.
 
-### Emas 2 — target 15 detik, arketipe confession
+### Gold 2 — 15 second target, confession archetype
 
 ```yaml
 script_id: gold_002
 target_duration_s: 15
-single_minded_proposition: "Mengakui salah lebih murah daripada mempertahankannya."
+single_minded_proposition: "Admitting a mistake is cheaper than defending it."
 hook:
   text: "Saya pernah salah hitung selama tiga tahun."
   word_count: 7
@@ -213,12 +213,12 @@ overlay:
   - "Yang mahal: menutupinya"
 ```
 
-### Emas 3 — target 60 detik, tiga babak
+### Gold 3 — 60 second target, three acts
 
 ```yaml
 script_id: gold_003
 target_duration_s: 60
-single_minded_proposition: "Keputusan kecil yang diulang mengalahkan keputusan besar yang jarang."
+single_minded_proposition: "Small decisions repeated beat large decisions rarely made."
 hook:
   text: "Keputusan besar tidak mengubah hidup kamu."
   word_count: 6
@@ -242,31 +242,31 @@ overlay:
   - "Kecil, tapi diulang"
 ```
 
-**Yang membuatnya layak 60 detik:** bukan karena lebih banyak kata, tapi karena ada tiga babak nyata — klaim, mekanisme, konsekuensi. Memadatkannya jadi 15 detik akan menghilangkan mekanismenya.
+**Why it earns 60 seconds:** not because it has more words, but because there are three real acts — claim, mechanism, consequence. Compressing it to 15 seconds would remove the mechanism.
 
 ---
 
-## 10. Kesalahan yang paling sering terjadi
+## 10. The most common mistakes
 
-| Kesalahan | Perbaikan |
+| Mistake | Fix |
 |---|---|
-| Hook memuat topik, bukan ketegangan | Ganti dengan kalimat yang membuat orang ingin tahu jawabannya |
-| Payoff mengulang hook | Payoff harus *menjawab*, bukan menggemakan |
-| Combo dari satu video | Tambah segmen dari video lain, atau turunkan jadi potongan biasa |
-| Segmen bagus tapi tidak melayani tesis | Buang. Segmen bagus yang salah tempat melemahkan semuanya |
-| Fakta tanpa sitasi karena "sudah umum" | Tetap wajib bersitasi. Yang "sudah umum" justru paling sering salah |
-| Teks layar terlalu panjang | ≤ 7 kata per baris |
-| Naskah butuh konteks video aslinya | Tambah satu beat penyambung, atau ganti segmen |
-| Menahan payoff ke detik 40 untuk retensi | Dilarang. Itu retensi yang dicuri |
+| The hook carries a topic, not tension | Replace it with a sentence that makes people want the answer |
+| The payoff repeats the hook | The payoff must *answer*, not echo |
+| A combo from one video | Add a segment from another video, or demote it to an ordinary clip |
+| A good segment that does not serve the thesis | Drop it. A good segment in the wrong place weakens everything |
+| A fact without citation because it is "common knowledge" | Still requires a citation. "Common knowledge" is exactly what is most often wrong |
+| On-screen text too long | ≤ 7 words per line |
+| The script needs the original video's context | Add a connective beat, or swap the segment |
+| Holding the payoff to second 40 for retention | Forbidden. That is stolen retention |
 
 ---
 
-## 11. Hubungan dengan dokumen lain
+## 11. Relationship to other documents
 
-| Dokumen | Hubungan |
+| Document | Relationship |
 |---|---|
-| `SOUL.md` | Batas keras. CRAFT tidak boleh melonggarkan apa pun di sana |
-| `docs/ALGORITHM.md` | Sumber angka durasi, hook, retensi |
-| `docs/TREND.md` | Register dan musim mengubah gaya, bukan gate |
-| `docs/NARRATIVE.md` | Brief menentukan tesis; CRAFT menentukan cara menuangkannya |
-| `docs/AGENTS.md` | Critic menjalankan tujuh gate |
+| `SOUL.md` | The hard boundary. CRAFT may not loosen anything there |
+| `docs/ALGORITHM.md` | Source of duration, hook, and retention numbers |
+| `docs/TREND.md` | Register and season change style, not gates |
+| `docs/NARRATIVE.md` | The brief sets the thesis; CRAFT sets how it is poured |
+| `docs/AGENTS.md` | The Critic runs the seven gates |

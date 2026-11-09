@@ -1,4 +1,4 @@
-"""API backend. Satu-satunya pintu ke data."""
+"""Backend API. The only door to the data."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api")
 
 
 def _settings(request: Request) -> Settings:
-    """Settings yang menempel pada app, bukan global, supaya test terisolasi."""
+    """Settings attached to the app, not global, so tests stay isolated."""
     return request.app.state.settings
 
 
@@ -28,7 +28,7 @@ def _engine(request: Request) -> Engine:
 
 
 def require_soul(request: Request) -> SoulCheck:
-    """Periksa konstitusi di awal setiap request. Mismatch -> 409."""
+    """Check the constitution at the start of every request. Mismatch -> 409."""
     settings = _settings(request)
     check = soul.verify(settings.soul_path, settings.soul_lock_path)
     if not check.ok:
@@ -38,7 +38,7 @@ def require_soul(request: Request) -> SoulCheck:
 
 @router.get("/soul", operation_id="get_soul_status")
 def get_soul_status(request: Request) -> dict[str, Any]:
-    """Status konstitusi: versi, hash, dan hasil pemeriksaan."""
+    """Constitution status: version, hash, and check result."""
     settings = _settings(request)
     check = soul.verify(settings.soul_path, settings.soul_lock_path)
     return {
@@ -53,7 +53,7 @@ def get_soul_status(request: Request) -> dict[str, Any]:
 
 @router.get("/health", operation_id="health")
 def health(request: Request) -> dict[str, Any]:
-    """Status backend, database, dan pustaka."""
+    """Backend, database, and library status."""
     settings = _settings(request)
     engine = _engine(request)
     videos = db.fetch_videos(engine)
@@ -70,7 +70,7 @@ def health(request: Request) -> dict[str, Any]:
 
 @router.get("/briefs", operation_id="list_briefs")
 def list_briefs(request: Request) -> list[dict[str, Any]]:
-    """Daftar brief beserta status validasinya."""
+    """List briefs with their validation status."""
     settings = _settings(request)
     items: list[dict[str, Any]] = []
     for brief_id in briefs_load.list_ids(settings.briefs_dir):
@@ -88,7 +88,7 @@ def list_briefs(request: Request) -> list[dict[str, Any]]:
 
 @router.get("/briefs/{brief_id}", operation_id="get_brief")
 def get_brief(brief_id: str, request: Request) -> dict[str, Any]:
-    """Satu brief yang sudah divalidasi. Brief ditolak -> 400 dengan alasannya."""
+    """One validated brief. A rejected brief -> 400 with the reason."""
     settings = _settings(request)
     report = briefs_load.load(settings.briefs_dir, brief_id)
     if report.brief is None:
@@ -109,7 +109,7 @@ def get_brief(brief_id: str, request: Request) -> dict[str, Any]:
 
 @router.get("/videos", operation_id="list_videos")
 def list_videos(request: Request) -> list[dict[str, Any]]:
-    """Seluruh video dalam pustaka, dengan id, judul, dan durasi."""
+    """Every video in the library, with id, title, and duration."""
     videos = db.fetch_videos(_engine(request))
     return [
         {
@@ -125,12 +125,12 @@ def list_videos(request: Request) -> list[dict[str, Any]]:
 
 @router.get("/videos/{video_id}", operation_id="get_video")
 def get_video(video_id: str, request: Request) -> dict[str, Any]:
-    """Satu video. Tidak ada -> 404 yang menyebut id yang dicari."""
+    """One video. Missing -> 404 naming the id requested."""
     video = db.fetch_video(_engine(request), video_id)
     if video is None:
         raise HTTPException(
             status_code=404,
-            detail=f"video {video_id} tidak ditemukan dalam pustaka",
+            detail=f"video {video_id} not found in the library",
         )
     transcript = db.fetch_transcript(_engine(request), video_id)
     return {
@@ -150,7 +150,7 @@ def create_app(
     engine: Engine | None = None,
     data_dir: Path | None = None,
 ) -> FastAPI:
-    """Bangun app. Parameter eksplisit dipakai test."""
+    """Build the app. Explicit parameters are for tests."""
     resolved = settings or get_settings()
     eng = engine or db.build_engine(resolved.database_url)
     db.create_schema(eng)
@@ -168,7 +168,7 @@ def create_app(
 
     @app.exception_handler(HTTPException)
     async def http_error(_request: Request, exc: HTTPException) -> JSONResponse:
-        """Balas error dengan bentuk konsisten."""
+        """Reply with errors in a consistent shape."""
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail},
@@ -176,7 +176,7 @@ def create_app(
 
     @app.get("/healthz", include_in_schema=False, dependencies=[])
     def plain_health(_request: Request) -> JSONResponse:
-        """Pemeriksaan liveness yang tidak menyentuh soul."""
+        """Liveness check that does not touch the soul."""
         return JSONResponse({"status": "ok"})
 
     return app
