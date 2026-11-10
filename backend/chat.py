@@ -36,6 +36,13 @@ HANDLE_RE = re.compile(r"(?:^|[\s(])@([A-Za-z0-9._-]{2,})")
 VIDEO_LINK_RE = re.compile(
     r"(?:youtube\.com/(?:watch|shorts|live|embed|playlist)|youtu\.be/)", re.I
 )
+SEARCH_VERBS = r"(?:cari|carikan|search|googling|google|riset|telusuri)"
+SEARCH_RE = re.compile(
+    rf"^(?:{SEARCH_VERBS}|cek\s+berita)\s+(?:di\s+|ke\s+)?(?:internet\s+|google\s+|web\s+)?(.+)$",
+    re.I,
+)
+PICK_RE = re.compile(r"^pakai\s+(?:nomor\s+|hasil\s+|yang\s+)?(\d{1,2})\b", re.I)
+SEARCH_LIMIT = 5
 COUNT_RE = re.compile(r"\b(\d{1,2})\s*(?:naskah|script|naskahnya|video|vid)\b", re.I)
 DURATION_RE = re.compile(r"\b(\d{1,2})\s*(?:detik|detiknya|sec|second|s)\b", re.I)
 
@@ -134,11 +141,16 @@ ATURAN:
 Balas JSON dengan bentuk ini:
 {"say": "kalimat kamu", "tool": null, "args": {}}
 
-tool hanya boleh: null, "fetch_channel", "ingest", "assemble".
+tool hanya boleh: null, "fetch_channel", "ingest", "assemble", "web_search".
 args:
 - fetch_channel: {"url": "https://www.youtube.com/@handle"}
 - ingest: {"limit": 25}
-- assemble: {"topic": "...", "audience": "...", "tone": "...", "count": 2, "duration": 15}"""
+- assemble: {"topic": "...", "audience": "...", "tone": "...", "count": 2, "duration": 15}
+- web_search: {"query": "kata kunci pendek"}
+
+Pakai web_search kalau user minta data, berita, contoh, atau fakta dari luar, atau kalau
+kamu butuh konteks yang tidak ada di transkrip. Jangan pakai web_search untuk pertanyaan
+soal percakapan ini, channel, atau isi pustaka."""
 
 
 def agent_prompt(session: Session, state: dict[str, Any]) -> str:
@@ -225,6 +237,7 @@ class Session:
     messages: list[dict[str, str]] = field(default_factory=list)
     attempted_url: str = ""
     last_channel_error: str = ""
+    research: list[dict[str, str]] = field(default_factory=list)
     ingest_tried: bool = False
     ran: bool = False
     pending_job: str | None = None
@@ -242,6 +255,7 @@ class Session:
             "messages": self.messages,
             "attempted_url": self.attempted_url,
             "last_channel_error": self.last_channel_error,
+            "research": self.research,
             "ingest_tried": self.ingest_tried,
             "ran": self.ran,
             "pending_job": self.pending_job,
@@ -261,6 +275,7 @@ class Session:
             messages=list(payload.get("messages") or []),
             attempted_url=str(payload.get("attempted_url") or ""),
             last_channel_error=str(payload.get("last_channel_error") or ""),
+            research=[dict(row) for row in payload.get("research") or [] if isinstance(row, dict)],
             ingest_tried=bool(payload.get("ingest_tried")),
             ran=bool(payload.get("ran")),
             pending_job=payload.get("pending_job"),
@@ -818,6 +833,12 @@ class Chat:
         canned = self._canned(session, lowered)
         if canned is not None:
             return ([canned], None)
+        pick = PICK_RE.match(lowered)
+        if pick is not None and session.research:
+            return self._pick_research(session, int(pick.group(1)))
+        query = self._search_query(text)
+        if query:
+            return (self._search_lines(session, query), None)
         rules = extract_rules(text)
         if rules.get("channel_url"):
             return self._next(session)
@@ -829,6 +850,69 @@ class Chat:
         if brief_ready and set(words[:4]) & ACTION_VERBS:
             return self._next(session)
         return None
+
+    def _search_query(self, text: str) -> str | None:
+        """Read 'cari X' as a search, and leave everything else alone.
+
+        A link, a channel, or a script request is not a search even when the verb is
+        there: the console has other tools for those, and sending them to the web
+        would answer the wrong question quickly.
+        """
+        stripped = text.strip()
+        if URL_RE.search(stripped) or HANDLE_RE.search(stripped):
+            return None
+        if re.search(r"\b(?:youtube|channel|transkrip|naskah|script)\b", stripped, re.I):
+            return None
+        match = SEARCH_RE.match(stripped)
+        if match is None:
+            return None
+        query = match.group(1).strip(" .,-")
+        query = re.sub(
+            r"\s+(?:dong|ya|deh|sih|di internet|di google|di web)$", "", query, flags=re.I
+        )
+        return query or None
+
+    def _search_lines(self, session: Session, query: str) -> list[str]:
+        """Search the web and print what came back, with a door back to the brief."""
+        from search.web import search
+
+        rows, problems = search(query, limit=SEARCH_LIMIT)
+        session.research = [row.as_dict() for row in rows]
+        if not rows:
+            reason = problems[-1] if problems else "nggak ada yang balas"
+            session.notes.append(f"web_search '{query}': nol hasil ({reason})")
+            return [
+                f'gue cari "{query}" tapi hasilnya nol.',
+                "coba kata kunci yang lebih spesifik, atau pakai bahasa inggris.",
+            ]
+        session.notes.append(f"web_search '{query}': {len(rows)} hasil, sumber {rows[0].source}")
+        lines = [f'hasil "{query}":']
+        for index, row in enumerate(rows, 1):
+            lines.append(f"{index}. {row.title[:95]}")
+            detail = f"   {row.domain}"
+            if row.snippet:
+                detail += f" · {row.snippet[:110]}"
+            lines.append(detail)
+        lines.append('mau topiknya dari salah satu ini? bilang "pakai 2".')
+        return lines
+
+    def _pick_research(self, session: Session, number: int) -> tuple[list[str], None]:
+        """Turn one search hit into the topic, so research reaches the brief."""
+        if number < 1 or number > len(session.research):
+            return ([f"nomornya cuma sampai {len(session.research)}."], None)
+        row = session.research[number - 1]
+        title = str(row.get("title") or "").strip()
+        if not title:
+            return (["baris itu kosong, coba nomor lain."], None)
+        session.slots["topic"] = title
+        session.ran = False
+        return (
+            [
+                f"topik: {title}",
+                'audiensnya siapa? atau bilang "gas" kalau gue yang pilih.',
+            ],
+            None,
+        )
 
     def _status_line(self, session: Session) -> str:
         """A greeting answered from this conversation's own library, no model call."""
@@ -894,6 +978,14 @@ class Chat:
 
         if tool == "assemble" and session.ran:
             return ([say or "yang tadi udah kelar, hasilnya di atas."], None)
+
+        if tool == "web_search":
+            query = str(args.get("query") or session.last_text or "").strip()
+            if not query:
+                return ([say or "cari apa? satu kata kunci aja."], None)
+            session.tool_calls += 1
+            lines = self._search_lines(session, query)
+            return ([say, *lines] if say else lines, None)
 
         job, problem = self._start_tool(session, tool, args)
         if problem:
@@ -1009,6 +1101,12 @@ class Chat:
     def _cmd_help(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
         """Every command, one line each."""
         return (skills.help_lines(), None)
+
+    def _cmd_cari(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Search the web from the console, without waiting for a model."""
+        if not arg:
+            return (["pakai: /cari inflasi indonesia terbaru"], None)
+        return (self._search_lines(session, arg), None)
 
     def _cmd_status(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
         """What this conversation has read so far."""

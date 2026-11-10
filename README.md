@@ -132,6 +132,7 @@ Tools it can call:
 - `fetch_channel` — read a channel's video tab into the library
 - `ingest` — pull transcripts, captions first
 - `assemble` — compose the brief from what you said and run the pipeline
+- `web_search` — look up facts, news and examples outside the library
 
 Long work runs as a job and its log is appended to the same conversation. After a job ends,
 the result is read by the rules and the next line answers what actually happened, not what
@@ -148,6 +149,7 @@ one; Enter runs it. The list is defined once in `backend/skills.py` and served f
 | Command | What it does |
 |---|---|
 | `/channel <link\|@handle>` | read the channel's video tab into the library |
+| `/cari <keywords>` | search the web and list the top hits |
 | `/ingest [n]` | fetch transcripts for videos that have none |
 | `/naskah [n]` | run the pipeline on the brief built so far |
 | `/topik <sentence>` | set the topic |
@@ -161,6 +163,28 @@ one; Enter runs it. The list is defined once in `backend/skills.py` and served f
 
 A conversation counts only the channel it opened. The library on disk is shared, so a new
 chat starts by asking for a link instead of announcing work it never did.
+
+### Web search
+
+The console can leave the machine. `cari inflasi indonesia terbaru`, `/cari ...`, or a
+question the model decides needs outside facts all run through `search/web.py`, which tries
+providers in order and stops at the first answer that covers at least half the query:
+
+1. Brave, only when `BRAVE_API_KEY` is set
+2. Bing's result page, with its click trackers unwrapped back into real URLs
+3. DuckDuckGo lite, posted as a form because the GET page serves a bot challenge here
+4. Google News RSS, which has the best relevance for Indonesian topical questions
+5. Wikipedia, for encyclopedic facts
+
+No key is required. Every provider is allowed to fail: a dead engine is a missing answer,
+and the console says how many results were found instead of inventing one. Results are
+scored by how much of the query they actually share, so a page about "Asia" cannot win a
+question about "startup gagal di Asia Tenggara". The hits stay in the session, and
+`pakai 2` turns one of them into the brief's topic.
+
+Search informs the angle and the topic. It never becomes a citation inside a script: the
+rule that every sentence traces back to a spoken second still holds, so the writer keeps
+quoting transcripts only.
 
 ```bash
 # 1. a token, so a tunnel is not an open door
@@ -205,7 +229,7 @@ hits the same IP block.
 
 ## Status
 
-Phases 1–6 complete and verified; phases 7–8 partly done, waiting on a real library and a golden set. `uv run check` is green: ruff, pyright, 112 tests, 81% coverage.
+Phases 1–6 complete and verified; phases 7–8 partly done, waiting on a real library and a golden set. `uv run check` is green: ruff, pyright, 213 tests, 81% coverage.
 
 See [`docs/STATUS.md`](docs/STATUS.md).
 
