@@ -162,7 +162,10 @@ you're not a bot". Channel listing still works, which is why the library fills b
 transcripts come back skipped. The fixes, in order of effort:
 
 1. a cookies file from a logged-in browser: `YT_COOKIES_FILE=/path/cookies.txt` (yt-dlp then
-   fetches the subtitle track, no audio download, no Whisper)
+   fetches the subtitle track, no audio download, no Whisper). You do not have to touch the
+   VPS to do this: paste the export straight into the chat. The console recognises a Netscape
+   cookies file, writes it to `cookies.txt` (gitignored, mode 600), points yt-dlp at it and
+   retries ingest in the same turn.
 2. a residential proxy: `YT_PROXY=http://user:pass@host:port`
 3. run `uv run narathor ingest` on a normal connection and copy the transcripts over
 

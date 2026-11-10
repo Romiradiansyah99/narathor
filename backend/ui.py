@@ -207,6 +207,7 @@ prompt.addEventListener('input', () => {{
     const r = await fetch('api/chat/history');
     const data = await r.json();
     (data.messages || []).forEach(msg => {{
+      if (msg.role === 'tool') return;
       if (msg.role === 'user') userTurn(msg.text);
       else turn(msg.text, 'bot');
     }});

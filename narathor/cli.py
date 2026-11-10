@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from typing import Annotated
@@ -18,6 +19,7 @@ from contracts import NarrativeBrief
 from eval.metrics import evaluate
 from index.build import build_cards
 from index.segmenter import segment_transcript
+from ingest import ytdlp
 from ingest.pipeline import DbStore, default_fetchers
 from ingest.pipeline import run as run_ingest
 from narathor.run import orchestrate
@@ -161,6 +163,12 @@ def doctor() -> None:
             f"{len(videos)} video, channel {channel.name if channel else '-'}",
         ),
         ("models", True, ", ".join(f"{k}={v}" for k, v in settings.models.items())),
+        (
+            "cookies",
+            ytdlp.cookies_present(),
+            os.environ.get("YT_COOKIES_FILE", "").strip()
+            or "belum ada; youtube akan menolak transkrip dari IP server",
+        ),
     ]
     for name, ok, detail in checks:
         typer.echo(f"[{'ok  ' if ok else 'gagal'}] {name:10} {detail}")

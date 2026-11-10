@@ -278,6 +278,32 @@ def extract_rules(message: str) -> dict[str, Any]:
     return found
 
 
+COOKIE_MARKER = "# Netscape HTTP Cookie File"
+
+
+def looks_like_cookies(text: str) -> bool:
+    """True when what was pasted is a cookies export, not a sentence."""
+    head = text.lstrip()
+    if head.startswith(COOKIE_MARKER):
+        return True
+    return "\tyoutube.com\t" in text and text.count("\t") > 12
+
+
+def cookies_path(settings: Settings) -> Path:
+    """Where the cookies file lives. Gitignored, next to the repo root."""
+    return settings.root / "cookies.txt"
+
+
+def save_cookies(settings: Settings, text: str) -> Path:
+    """Write the cookies export and point yt-dlp at it for this process."""
+    path = cookies_path(settings)
+    body = text if text.endswith("\n") else text + "\n"
+    path.write_text(body, encoding="utf-8")
+    path.chmod(0o600)
+    os.environ["YT_COOKIES_FILE"] = str(path)
+    return path
+
+
 def _parse_json(text: str) -> dict[str, Any]:
     """Read the first JSON object in a model answer."""
     start = text.find("{")
@@ -560,19 +586,37 @@ class Chat:
                 session.messages.extend({"role": "bot", "text": line} for line in reply)
                 self.store.save(session)
                 return {"sid": session.sid, "reply": reply, "job_id": None, "messages": []}
-            session.slots.update(understand(text, None))
-            session.tool_calls = 0
-            session.ran = False
-            session.notes = []
-            if "coba lagi" in text.lower():
+            prefix: list[str] = []
+            if looks_like_cookies(text):
+                path = save_cookies(self.settings, text)
+                session.tool_calls = 0
                 session.ingest_tried = False
-                session.channel_fetched = False
-            session.messages.append({"role": "user", "text": text})
+                session.notes = []
+                session.messages.append({"role": "user", "text": "(cookies youtube ditempel)"})
+                prefix = [f"cookies masuk, disimpan di {path.name}. gue coba ambil transkrip lagi."]
+            else:
+                session.slots.update(understand(text, None))
+                session.tool_calls = 0
+                session.notes = []
+                if "coba lagi" in text.lower():
+                    session.ingest_tried = False
+                    session.channel_fetched = False
+                session.messages.append({"role": "user", "text": text})
+            session.ran = False
+            reply, job = self._turn(session)
+            reply = prefix + reply
+            session.messages.extend({"role": "bot", "text": line} for line in reply)
+            self.store.save(session)
+            return {
+                "sid": session.sid,
+                "reply": reply,
+                "job_id": job.job_id if job else None,
+                "job_kind": job.kind if job else None,
+            }
         elif advance and session.pending_job:
             observation = self._observe(session)
             session.pending_job = None
             session.notes.append(observation)
-            session.messages.append({"role": "tool", "text": observation})
 
         reply, job = self._turn(session)
         session.messages.extend({"role": "bot", "text": line} for line in reply)
@@ -615,7 +659,9 @@ class Chat:
         tool = plan.get("tool")
         args = plan.get("args") or {}
         if not tool:
-            return ([say] if say else ["oke."], None)
+            if say:
+                return ([say], None)
+            return self._next(session)
 
         if session.tool_calls >= 3:
             return ([say or "gue berhenti dulu, takutnya muter. lanjut?"], None)

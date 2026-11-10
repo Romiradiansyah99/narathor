@@ -445,6 +445,31 @@ def test_agent_stops_after_three_tool_calls(settings, monkeypatch: pytest.Monkey
     assert len(jobs.started) == 3
 
 
+COOKIES = (
+    "# Netscape HTTP Cookie File\n"
+    ".youtube.com\tTRUE\t/\tTRUE\t0\tSID\tabc123\n"
+    ".youtube.com\tTRUE\t/\tTRUE\t0\tHSID\tdef456\n"
+)
+
+
+def test_looks_like_cookies_separates_a_paste_from_a_sentence() -> None:
+    assert chat.looks_like_cookies(COOKIES)
+    assert not chat.looks_like_cookies("bikin naskah soal uang")
+
+
+def test_a_pasted_cookie_file_is_saved_and_used(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    service, _jobs = _chat(
+        settings, monkeypatch, channel=FakeChannel(), videos=[_video("VID-0001")], transcripts=1
+    )
+    answer = service.handle("abc", COOKIES)
+    saved = settings.root / "cookies.txt"
+    assert saved.exists()
+    assert saved.read_text(encoding="utf-8").startswith("# Netscape")
+    assert any("cookies" in line for line in answer["reply"])
+    session = service.store.load("abc")
+    assert session.messages[0]["text"] == "(cookies youtube ditempel)"
+
+
 def test_session_store_roundtrips(tmp_path: Path) -> None:
     store = chat.SessionStore(tmp_path)
     session = chat.Session(sid="abc", slots={"topic": "uang"})
