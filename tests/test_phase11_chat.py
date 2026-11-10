@@ -17,15 +17,29 @@ class FakeJobs:
 
     def __init__(self) -> None:
         self.started: list[dict[str, Any]] = []
+        self.jobs: dict[str, Any] = {}
 
     def start(self, kind: str, label: str, work) -> Any:
+        job_id = f"job-{kind}-{len(self.started)}"
         job = type(
             "FakeJob",
             (),
-            {"job_id": f"job-{kind}", "kind": kind, "label": label, "work": work},
+            {
+                "job_id": job_id,
+                "kind": kind,
+                "label": label,
+                "work": work,
+                "status": "running",
+                "result": {},
+                "error": None,
+            },
         )()
+        self.jobs[job_id] = job
         self.started.append({"kind": kind, "label": label, "job": job})
         return job
+
+    def get(self, job_id: str) -> Any:
+        return self.jobs.get(job_id)
 
 
 class FakeChannel:
@@ -293,6 +307,142 @@ def test_library_hints_name_what_the_transcripts_talk_about(client) -> None:
     hints = chat.library_hints(client.app.state.engine)
     assert isinstance(hints, list)
     assert hints
+
+
+# --------------------------------------------------------------------------- #
+# The agent loop
+# --------------------------------------------------------------------------- #
+
+
+class ScriptedModel:
+    """A model that answers with a fixed list of replies, in order."""
+
+    def __init__(self, *replies: str) -> None:
+        self.replies = list(replies)
+        self.prompts: list[str] = []
+
+    def __call__(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        return self.replies.pop(0) if self.replies else "{}"
+
+
+def _agent(settings, monkeypatch: pytest.MonkeyPatch, model: ScriptedModel, **state: Any):
+    _patch_db(
+        monkeypatch,
+        channel=state.get("channel"),
+        videos=state.get("videos"),
+        transcripts=state.get("transcripts", 0),
+    )
+    jobs = FakeJobs()
+    return chat.Chat(settings=settings, engine=object(), jobs=jobs, llm=model), jobs
+
+
+def test_parse_plan_reads_a_tool_call() -> None:
+    plan = chat.parse_plan('{"say": "gas", "tool": "ingest", "args": {"limit": 5}}')
+    assert plan == {"say": "gas", "tool": "ingest", "args": {"limit": 5}}
+
+
+def test_parse_plan_treats_none_as_talk_only() -> None:
+    plan = chat.parse_plan('{"say": "halo", "tool": "none", "args": {}}')
+    assert plan is not None
+    assert plan["tool"] is None
+
+
+def test_parse_plan_rejects_prose() -> None:
+    assert chat.parse_plan("tentu, saya akan membantu") is None
+
+
+def test_agent_says_what_the_model_said(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    model = ScriptedModel('{"say": "channel mana nih?", "tool": null, "args": {}}')
+    service, jobs = _agent(settings, monkeypatch, model)
+    answer = service.handle("abc", "halo")
+    assert answer["reply"] == ["channel mana nih?"]
+    assert jobs.started == []
+
+
+def test_agent_starts_the_tool_it_asked_for(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    model = ScriptedModel(
+        '{"say": "siap, gue baca.", "tool": "fetch_channel", '
+        '"args": {"url": "https://www.youtube.com/@baru"}}'
+    )
+    service, jobs = _agent(settings, monkeypatch, model)
+    answer = service.handle("abc", "coba @baru")
+    assert answer["job_kind"] == "channel"
+    assert jobs.started[0]["kind"] == "channel"
+
+
+def test_agent_sees_the_job_result_and_answers_again(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = ScriptedModel(
+        '{"say": "gue ambil transkripnya dulu.", "tool": "ingest", "args": {}}',
+        '{"say": "transkripnya kosong, youtube nolak mesin ini.", "tool": null, "args": {}}',
+    )
+    service, jobs = _agent(
+        settings,
+        monkeypatch,
+        model,
+        channel=FakeChannel(),
+        videos=[_video("VID-0001")],
+    )
+    first = service.handle("abc", "bikin naskah soal uang")
+    assert first["job_kind"] == "ingest"
+    job = jobs.jobs[first["job_id"]]
+    job.status = "done"
+    job.result = {"ingested": [], "cached": [], "skipped": ["VID-0001"], "blocked": 1}
+
+    second = service.handle("abc", advance=True)
+    assert second["reply"] == ["transkripnya kosong, youtube nolak mesin ini."]
+    assert "diblokir youtube 1" in model.prompts[-1]
+
+
+def test_agent_falls_back_when_the_model_talks_prose(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = ScriptedModel("maaf, saya tidak bisa")
+    service, _jobs = _agent(settings, monkeypatch, model)
+    answer = service.handle("abc", "halo")
+    assert any("channel" in line for line in answer["reply"])
+
+
+def test_agent_does_not_restart_a_finished_assemble(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    model = ScriptedModel(
+        '{"say": "gue rangkai.", "tool": "assemble", "args": {"topic": "uang"}}',
+        '{"say": "siap", "tool": "assemble", "args": {"topic": "uang"}}',
+    )
+    service, jobs = _agent(
+        settings,
+        monkeypatch,
+        model,
+        channel=FakeChannel(),
+        videos=[_video("VID-0001")],
+        transcripts=1,
+    )
+    first = service.handle("abc", "bikin naskah soal uang")
+    assert first["job_kind"] == "run"
+    jobs.jobs[first["job_id"]].status = "done"
+    jobs.jobs[first["job_id"]].result = {"scripts": 1, "block": "naskah 1"}
+
+    second = service.handle("abc", advance=True)
+    assert second["job_id"] is None
+    assert len(jobs.started) == 1
+
+
+def test_agent_stops_after_three_tool_calls(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    call = '{"say": "lagi", "tool": "ingest", "args": {}}'
+    model = ScriptedModel(call, call, call, call, call)
+    service, jobs = _agent(
+        settings, monkeypatch, model, channel=FakeChannel(), videos=[_video("V1")]
+    )
+    service.handle("abc", "gas")
+    for _ in range(4):
+        last = service.handle("abc", advance=True)
+        if last["job_id"] is None:
+            break
+        jobs.jobs[last["job_id"]].status = "done"
+    assert len(jobs.started) == 3
 
 
 def test_session_store_roundtrips(tmp_path: Path) -> None:

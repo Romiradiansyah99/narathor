@@ -52,6 +52,74 @@ PLANNER_SYSTEM = (
     "Balas JSON saja, tanpa penjelasan, tanpa markdown."
 )
 
+AGENT_SYSTEM = """Kamu Narathor, editor naskah short di sebuah agensi konten. Kamu ngobrol sama Romi,
+yang pegang channel dan briefnya. Kamu bukan formulir. Kamu orang yang sudah biasa kerja:
+santai, singkat, langsung, tanpa emoji, tanpa tanda pisah panjang.
+
+Kamu punya alat. Kamu sendiri yang memutuskan kapan memakainya, dan kamu tidak pernah bilang
+sudah mengerjakan sesuatu sebelum alatnya benar benar dipanggil.
+
+ATURAN:
+- Baca situasinya dulu. Kalau datanya sudah ada, jangan diminta lagi.
+- Kalau channel belum ada, minta link atau handle-nya. Jangan mengarang channel.
+- Kalau channel ada dan transkripnya nol, panggil ingest tanpa nanya.
+- Kalau transkrip ada dan topiknya sudah jelas, panggil assemble tanpa nanya.
+- Kalau topik belum jelas, tanya satu hal saja, singkat, kayak ngobrol.
+- Kalau hasil alat nol atau gagal, bilang apa adanya dan sebut langkah berikutnya.
+- "say" maksimal dua kalimat. Jangan mengulang isi naskah yang sudah tercetak.
+
+Balas JSON dengan bentuk ini:
+{"say": "kalimat kamu", "tool": null, "args": {}}
+
+tool hanya boleh: null, "fetch_channel", "ingest", "assemble".
+args:
+- fetch_channel: {"url": "https://www.youtube.com/@handle"}
+- ingest: {"limit": 25}
+- assemble: {"topic": "...", "audience": "...", "tone": "...", "count": 2, "duration": 15}"""
+
+
+def agent_prompt(session: Session, state: dict[str, Any]) -> str:
+    """Everything the agent needs to decide the next move, in one block."""
+    lines = [
+        "KONDISI SEKARANG",
+        f"channel: {state['channel'] or 'belum ada'}",
+        f"video di pustaka: {state['videos']}",
+        f"transkrip siap: {state['transcripts']}",
+        f"topik yang sudah disebut: {session.slots.get('topic') or 'belum ada'}",
+        f"audiens: {session.slots.get('audience') or 'belum ada'}",
+        f"tone: {session.slots.get('tone') or 'belum ada'}",
+        f"jumlah naskah: {session.slots.get('count') or 'belum disebut'}",
+        f"alat yang sudah dipanggil untuk pesan ini: {session.tool_calls}",
+    ]
+    if session.notes:
+        lines.append("")
+        lines.append("HASIL ALAT TERAKHIR")
+        lines.extend(session.notes[-4:])
+    lines.append("")
+    lines.append("PERCAKAPAN")
+    for message in session.messages[-10:]:
+        who = {"user": "Romi", "bot": "Kamu", "tool": "hasil alat"}.get(message["role"], "?")
+        lines.append(f"{who}: {message['text'][:400]}")
+    return "\n".join(lines)
+
+
+def parse_plan(raw: str) -> dict[str, Any] | None:
+    """Read the agent's JSON. Anything else is not a plan."""
+    payload = _parse_json(raw)
+    if not payload:
+        return None
+    say = payload.get("say")
+    tool = payload.get("tool")
+    args = payload.get("args")
+    if tool in {"none", "null", ""}:
+        tool = None
+    return {
+        "say": str(say).strip() if isinstance(say, str) else "",
+        "tool": tool if isinstance(tool, str) else None,
+        "args": args if isinstance(args, dict) else {},
+    }
+
+
 PLANNER_PROMPT = """Baca pesan user, keluarkan objek JSON dengan kunci berikut:
 channel_url (link atau @handle channel YouTube, null kalau tidak ada),
 topic (topik naskah, satu frasa pendek, null kalau tidak ada),
@@ -78,6 +146,9 @@ class Session:
     channel_fetched: bool = False
     ingest_tried: bool = False
     ran: bool = False
+    pending_job: str | None = None
+    tool_calls: int = 0
+    notes: list[str] = field(default_factory=list)
     brief_id: str | None = None
     updated_at: str = ""
 
@@ -90,6 +161,9 @@ class Session:
             "channel_fetched": self.channel_fetched,
             "ingest_tried": self.ingest_tried,
             "ran": self.ran,
+            "pending_job": self.pending_job,
+            "tool_calls": self.tool_calls,
+            "notes": self.notes,
             "brief_id": self.brief_id,
             "updated_at": self.updated_at,
         }
@@ -104,6 +178,9 @@ class Session:
             channel_fetched=bool(payload.get("channel_fetched")),
             ingest_tried=bool(payload.get("ingest_tried")),
             ran=bool(payload.get("ran")),
+            pending_job=payload.get("pending_job"),
+            tool_calls=int(payload.get("tool_calls") or 0),
+            notes=list(payload.get("notes") or []),
             brief_id=payload.get("brief_id"),
             updated_at=str(payload.get("updated_at") or ""),
         )
@@ -456,7 +533,7 @@ class Chat:
                 planner = for_role("matcher")
 
                 def call(prompt: str) -> str:
-                    return planner.complete(prompt, system=PLANNER_SYSTEM)
+                    return planner.complete(prompt, system=AGENT_SYSTEM)
 
                 self._llm = call
             except Exception:
@@ -483,14 +560,21 @@ class Chat:
                 session.messages.extend({"role": "bot", "text": line} for line in reply)
                 self.store.save(session)
                 return {"sid": session.sid, "reply": reply, "job_id": None, "messages": []}
-            session.slots.update(understand(text, self.model()))
+            session.slots.update(understand(text, None))
+            session.tool_calls = 0
             session.ran = False
+            session.notes = []
             if "coba lagi" in text.lower():
                 session.ingest_tried = False
                 session.channel_fetched = False
             session.messages.append({"role": "user", "text": text})
+        elif advance and session.pending_job:
+            observation = self._observe(session)
+            session.pending_job = None
+            session.notes.append(observation)
+            session.messages.append({"role": "tool", "text": observation})
 
-        reply, job = self._next(session)
+        reply, job = self._turn(session)
         session.messages.extend({"role": "bot", "text": line} for line in reply)
         self.store.save(session)
         return {
@@ -499,6 +583,124 @@ class Chat:
             "job_id": job.job_id if job else None,
             "job_kind": job.kind if job else None,
         }
+
+    # -- the agent ------------------------------------------------------ #
+
+    def _turn(self, session: Session) -> tuple[list[str], Job | None]:
+        """Let the model decide. Fall back to the rule ladder when it cannot."""
+        llm = self.model()
+        if llm is not None:
+            plan = self._think(session, llm)
+            if plan is not None:
+                return self._execute(session, plan)
+        return self._next(session)
+
+    def _think(self, session: Session, llm: Callable[[str], str]) -> dict[str, Any] | None:
+        """One model call, one plan. A dead model is a missing plan, not a crash."""
+        channel, videos, transcripts = self._counts()
+        state = {
+            "channel": channel.name if channel is not None else None,
+            "videos": videos,
+            "transcripts": transcripts,
+        }
+        try:
+            raw = llm(agent_prompt(session, state))
+        except Exception:
+            return None
+        return parse_plan(raw)
+
+    def _execute(self, session: Session, plan: dict[str, Any]) -> tuple[list[str], Job | None]:
+        """Carry out the plan: say the line, and start the tool it asked for."""
+        say = str(plan.get("say") or "").strip()
+        tool = plan.get("tool")
+        args = plan.get("args") or {}
+        if not tool:
+            return ([say] if say else ["oke."], None)
+
+        if session.tool_calls >= 3:
+            return ([say or "gue berhenti dulu, takutnya muter. lanjut?"], None)
+
+        if tool == "assemble" and session.ran:
+            return ([say or "yang tadi udah kelar, hasilnya di atas."], None)
+
+        job, problem = self._start_tool(session, tool, args)
+        if problem:
+            return ([say, problem] if say else [problem], None)
+
+        session.tool_calls += 1
+        assert job is not None
+        session.pending_job = job.job_id
+        fallback = {
+            "fetch_channel": "gue baca dulu daftar video di channel itu.",
+            "ingest": "transkripnya gue ambil dulu, bentar.",
+            "assemble": "gue rangkai sekarang.",
+        }[tool]
+        return ([say or fallback], job)
+
+    def _start_tool(
+        self, session: Session, tool: str, args: dict[str, Any]
+    ) -> tuple[Job | None, str | None]:
+        """Start one job. Returns (job, problem)."""
+        if tool == "fetch_channel":
+            url = str(args.get("url") or session.slots.get("channel_url") or "").strip()
+            if not url:
+                return None, "link channel-nya belum ada, tempel dulu."
+            session.slots["channel_url"] = url
+            session.channel_fetched = True
+            return self._channel_job(session, url), None
+
+        if tool == "ingest":
+            session.ingest_tried = True
+            limit = int(args.get("limit") or 25)
+            return self._ingest_job(session, limit), None
+
+        if tool == "assemble":
+            session.slots.update(
+                {
+                    k: v
+                    for k, v in args.items()
+                    if v not in (None, "", [])
+                    and k
+                    in {
+                        "topic",
+                        "audience",
+                        "tone",
+                        "count",
+                        "duration",
+                        "message",
+                    }
+                }
+            )
+            if not session.slots.get("channel_url"):
+                channel, _videos, _transcripts = self._counts()
+                if channel is not None:
+                    session.slots["channel_url"] = channel.url
+            if not session.slots.get("topic"):
+                return None, "topiknya belum jelas, mau bikin naskah soal apa?"
+            return self._start_run(session)
+
+        return None, f"alat {tool} nggak ada di daftar."
+
+    def _observe(self, session: Session) -> str:
+        """What a finished job tells the agent, in plain words."""
+        job = self.jobs.get(str(session.pending_job))
+        if job is None:
+            return "hasil alat tidak ketemu, session ini kehilangan job-nya."
+        result = job.result or {}
+        if job.status == "failed":
+            return f"{job.kind} gagal: {job.error or 'tanpa pesan'}"
+        if job.kind == "channel":
+            return f"fetch_channel selesai: {result.get('videos', 0)} video masuk pustaka."
+        if job.kind == "ingest":
+            return (
+                "ingest selesai: "
+                f"masuk {len(result.get('ingested') or [])}, "
+                f"cache {len(result.get('cached') or [])}, "
+                f"gagal {len(result.get('skipped') or [])}, "
+                f"diblokir youtube {result.get('blocked', 0)}."
+            )
+        block = str(result.get("block") or "")
+        return f"assemble selesai: {result.get('scripts', 0)} naskah.\n{block[:900]}"
 
     # -- decisions ------------------------------------------------------ #
 
@@ -579,14 +781,24 @@ class Chat:
                 ],
                 None,
             )
+        job, problem = self._start_run(session)
+        if problem:
+            return [problem], None
+        count = int(session.slots.get("count") or DEFAULT_COUNT)
+        duration = int(session.slots.get("duration") or DEFAULT_DURATION)
+        opening = [
+            f"{transcripts} transkrip siap, {videos} video di pustaka.",
+            f"gue rangkai {count} naskah {duration} detik. jalan.",
+        ]
+        return (opening, job)
+
+    def _start_run(self, session: Session) -> tuple[Job | None, str | None]:
+        """Validate the brief, write it, and start the run job. Returns (job, problem)."""
         brief_id, payload = compose_brief(session.slots)
         report = briefs_load.validate(brief_id, payload)
         if not report.ok:
             reasons = "; ".join(f"{r.code} {r.message}" for r in report.rejections)
-            return (
-                [f"brief-nya ditolak mesin: {reasons}", "ubah arahan dikit, lalu kirim lagi."],
-                None,
-            )
+            return None, f"brief-nya ditolak mesin: {reasons}. ubah arahan dikit, lalu kirim lagi."
 
         path = briefs_load.brief_path(self.settings.briefs_dir, brief_id)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -595,14 +807,9 @@ class Chat:
         )
         session.brief_id = brief_id
         session.ran = True
-
-        count = int(payload["output"]["scripts"])
-        duration = int(payload["output"]["target_duration_s"])
-        opening = [
-            f"{transcripts} transkrip siap, {videos} video di pustaka.",
-            f"gue rangkai {count} naskah {duration} detik. jalan.",
-        ]
-        return (opening, self._run_job(brief_id))
+        session.slots["count"] = int(payload["output"]["scripts"])
+        session.slots["duration"] = int(payload["output"]["target_duration_s"])
+        return self._run_job(brief_id), None
 
     # -- jobs ----------------------------------------------------------- #
 

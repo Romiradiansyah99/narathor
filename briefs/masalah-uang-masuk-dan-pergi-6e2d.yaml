@@ -1,0 +1,34 @@
+id: masalah-uang-masuk-dan-pergi-6e2d
+title: Masalah uang masuk dan pergi
+learning_outcome: 'Setelah nonton, penonton paham satu hal: Masalah uang masuk dan
+  pergi.'
+thesis: Masalah uang masuk dan pergi
+audience:
+  primary: umum
+  literacy_level: menengah
+  pain_points: []
+values_allowed:
+- transparansi
+- keterlacakan
+values_blocked: []
+register_level: 2
+tone:
+  target: santai
+  avoid:
+  - menggurui
+  - jargon
+seasonal_context:
+  as_of: '2026-11-10'
+  period: null
+  moments: []
+  trend_notes: ''
+sources:
+  channels:
+  - https://www.youtube.com/@channel-uji
+  recency_preference: any
+  min_duration_s: 180
+output:
+  scripts: 1
+  target_duration_s: 15
+  language: id
+  montages: 0

@@ -83,6 +83,9 @@ Not run. Waiting on a golden set and 10 identical `Combo`s.
 | 2026-11-10 | The chat reads a message with rules first, then a model | Rules are exact for URLs, handles, counts and durations and never fail; the model is only needed for topic and audience | `NARATHOR_CHAT_MODEL=off` still produces a working console |
 | 2026-11-10 | The public page carries the name and one line, no demo scripts | Fixture output under the product's name reads as a result nobody asked for | `site/` no longer ships `scripts/`; the console is where output lives |
 | 2026-11-10 | A failed run names the words the library actually uses | A lexical matcher cannot invent a topic; when zero scripts pass the gates the user needs to know what the transcripts talk about | `library_hints` in `backend/chat.py` |
+| 2026-11-10 | The chat is an agent loop with three tools, not a question ladder | A ladder answers the same way every time, which reads as a form with extra steps; an agent reads the situation and decides | `_turn` / `_think` / `_start_tool` in `backend/chat.py`; the ladder survives as the fallback when no model answers |
+| 2026-11-10 | A finished job is fed back to the model before the next line | Otherwise the console narrates what it expected instead of what happened | `_observe` turns a job into one plain sentence; the reply that follows is written from it |
+| 2026-11-10 | Tool calls capped at three per user message; a finished `assemble` cannot restart | An agent that loops on its own tool is a bill, not a feature | Two guards in `_execute`, covered by tests |
 
 ---
 

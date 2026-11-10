@@ -123,9 +123,21 @@ uv run python tools/build_landing.py   # writes site/index.html
 
 ## Console
 
-The console is a conversation, not a form. You type, it answers, and it asks for the one
-thing it still needs. When it has a channel, a topic and transcripts, it runs the pipeline
-and prints the script with its citations, in the same column.
+The console is a conversation, not a form. You type, it answers, and it decides what to do
+next. It is an agent loop: one model call reads the situation, the conversation and the last
+tool result, then either says something or calls a tool.
+
+Tools it can call:
+
+- `fetch_channel` — read a channel's video tab into the library
+- `ingest` — pull transcripts, captions first
+- `assemble` — compose the brief from what you said and run the pipeline
+
+Long work runs as a job and its log is appended to the same conversation. After a job ends,
+the result is fed back to the model so the next line answers what actually happened, not what
+was expected. Every turn is stored in `output/_chat/<session>.json`, so closing the tab loses
+nothing. Tool calls are capped at three per message, and a finished `assemble` will not
+restart itself.
 
 ```bash
 # 1. a token, so a tunnel is not an open door
@@ -139,15 +151,10 @@ cloudflared tunnel --url http://127.0.0.1:8811
 # open the printed https://<name>.trycloudflare.com/?t=<token>
 ```
 
-What it does with a message: `POST /api/chat` reads the message for a channel, a topic, an
-audience, a tone and a count, then either asks the next question or starts one of three
-jobs (`channel`, `ingest`, `run`). Long work runs in the background and its log is appended
-to the same conversation. Every turn is stored in `output/_chat/<session>.json`, so closing
-the tab loses nothing.
-
-A model reads the message when one is configured; without it the rules still parse a URL, a
-handle, a count and a duration, and the console keeps working. Set `NARATHOR_CHAT_MODEL=off`
-to run without one.
+When the model is unavailable the console does not break: it falls back to a deterministic
+ladder (ask for the channel, then the topic, then ingest, then assemble) that reads URLs,
+handles, counts and durations with regex. Set `NARATHOR_CHAT_MODEL=off` to run that way on
+purpose.
 
 **One known blocker.** YouTube refuses transcripts and media from datacenter IPs:
 `youtube_transcript_api` raises `RequestBlocked` and yt-dlp answers "Sign in to confirm
