@@ -54,8 +54,9 @@ def engine(settings: Settings) -> Iterator:
 
 
 @pytest.fixture
-def client(settings: Settings, engine) -> Iterator[TestClient]:
+def client(settings: Settings, engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Test client di atas app yang dibangun dengan settings terisolasi."""
+    monkeypatch.setenv("NARATHOR_CHAT_MODEL", "off")
     app = create_app(settings=settings, engine=engine, data_dir=settings.data_dir)
     with TestClient(app) as test_client:
         yield test_client

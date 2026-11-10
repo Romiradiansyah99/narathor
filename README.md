@@ -106,32 +106,26 @@ Those four are not negotiable policy. Three of them come from `SOUL.md`, and the
 
 ## Site
 
-Scripts and their citations are published as a static site:
+The public page is a single screen:
 
 - https://romiradiansyah99.github.io/narathor/
 
-**The site currently shows demo data, not a real run.** `data/` ships two synthetic
-transcripts (`VID-0001`, `VID-0002`) so the pipeline can be exercised end to end without
-network access, and `briefs/cerdaskan-bangsa.yaml` is a sample brief taken from
-`docs/NARRATIVE.md`. No channel has been ingested and no brief has been supplied by the
-owner. Every page built from a run with `"fixture": true` in `run.json` carries a DEMO DATA
-notice. The first real run replaces it.
+It carries the name, one line, and nothing else. Earlier commits published demo scripts
+built from the synthetic transcripts in `data/`; those pages are gone on purpose. A static
+host cannot take a brief or run a pipeline, and showing fixture output next to the product
+name reads as a result. The page stays empty until a real run has something worth showing.
 
-Rebuilt after each run:
 ```bash
-uv run python tools/build_site.py
-git push origin master
-# then copy the contents of site/ onto the gh-pages branch
+uv run python tools/build_landing.py   # writes site/index.html
 ```
-
-GitHub Pages only serves files. The engine runs on your own machine through the CLI.
 
 ---
 
 ## Console
 
-The static site cannot take input. The console can: it is the same engine behind a form,
-served by the FastAPI backend.
+The console is a conversation, not a form. You type, it answers, and it asks for the one
+thing it still needs. When it has a channel, a topic and transcripts, it runs the pipeline
+and prints the script with its citations, in the same column.
 
 ```bash
 # 1. a token, so a tunnel is not an open door
@@ -145,8 +139,15 @@ cloudflared tunnel --url http://127.0.0.1:8811
 # open the printed https://<name>.trycloudflare.com/?t=<token>
 ```
 
-The page has three steps: point at a channel, write the brief, assemble. Long steps run
-as jobs, and the log under the buttons is the job's own log, not a progress bar.
+What it does with a message: `POST /api/chat` reads the message for a channel, a topic, an
+audience, a tone and a count, then either asks the next question or starts one of three
+jobs (`channel`, `ingest`, `run`). Long work runs in the background and its log is appended
+to the same conversation. Every turn is stored in `output/_chat/<session>.json`, so closing
+the tab loses nothing.
+
+A model reads the message when one is configured; without it the rules still parse a URL, a
+handle, a count and a duration, and the console keeps working. Set `NARATHOR_CHAT_MODEL=off`
+to run without one.
 
 **One known blocker.** YouTube refuses transcripts and media from datacenter IPs:
 `youtube_transcript_api` raises `RequestBlocked` and yt-dlp answers "Sign in to confirm

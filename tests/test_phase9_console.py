@@ -201,18 +201,20 @@ def test_discover_fails_loudly_when_youtube_raises(monkeypatch: pytest.MonkeyPat
 # --------------------------------------------------------------------------- #
 
 
-def test_page_carries_the_boot_state() -> None:
-    html = ui.page({"videos": 3, "channel": None, "soul": {"version": 2, "ok": True}})
-    assert '"videos": 3' in html
+def test_page_is_a_single_column_chat() -> None:
+    html = ui.page()
+    assert ui.TAGLINE in html
     assert "Courier Prime" in html
-    assert 'id="btn-run"' in html
-    assert 'id="console"' in html
+    assert 'id="prompt"' in html
+    assert 'id="flow"' in html
+    assert "soul" not in html.lower()
+    assert "constitution" not in html.lower()
+    assert "cerdaskan" not in html.lower()
 
 
-def test_page_escapes_dangerous_strings() -> None:
-    html = ui.page({"channel": {"name": "</script><b>x"}})
+def test_page_renders_without_state() -> None:
+    html = ui.page({"videos": 3, "channel": {"name": "</script><b>x"}})
     assert "</script><b>x" not in html
-    assert "\\u003c" in html.lower() or "&lt;" in html.lower()
 
 
 # --------------------------------------------------------------------------- #
@@ -223,7 +225,7 @@ def test_page_escapes_dangerous_strings() -> None:
 def test_console_page_is_served(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
-    assert "Assembly console" in response.text
+    assert ui.TAGLINE in response.text
 
 
 def test_state_endpoint_reports_the_library(client: TestClient) -> None:

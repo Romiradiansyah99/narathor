@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import os
+import uuid
 from pathlib import Path
 from typing import Any
 
 import yaml
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.engine import Engine
 
-from backend import db, soul, ui
+from backend import chat, db, soul, ui
 from backend.config import Settings, get_settings
 from backend.jobs import Job, Registry
 from briefs import load as briefs_load
@@ -362,6 +363,7 @@ def create_app(
     app.state.settings = resolved
     app.state.engine = eng
     app.state.jobs = Registry(log_dir=resolved.output_dir / "_jobs")
+    app.state.chat = chat.Chat(resolved, eng, app.state.jobs)
     app.include_router(router)
 
     token = os.environ.get("NARATHOR_UI_TOKEN", "").strip()
@@ -387,21 +389,29 @@ def create_app(
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     def console() -> HTMLResponse:
-        """The console page. Data is fetched by the page itself."""
-        check = soul.verify(resolved.soul_path, resolved.soul_lock_path)
-        channel = db.fetch_channel(eng)
-        videos = db.fetch_videos(eng)
-        transcripts = sum(1 for v in videos if db.fetch_transcript(eng, v.video_id) is not None)
-        state_boot = {
-            "soul": {"version": check.version, "ok": check.ok},
-            "channel": channel.model_dump(mode="json") if channel else None,
-            "videos": len(videos),
-            "transcripts": transcripts,
-            "briefs": len(briefs_load.list_ids(resolved.briefs_dir)),
-            "briefs_existing": briefs_load.list_ids(resolved.briefs_dir),
-            "scripts": len(list(resolved.output_dir.glob("*/*/scripts/*.json"))),
-        }
-        return HTMLResponse(ui.page(state_boot))
+        """The console page: a prompt, and whatever it has said so far."""
+        return HTMLResponse(ui.page())
+
+    @app.post("/api/chat", operation_id="chat_turn")
+    def chat_turn(payload: dict[str, Any], request: Request, response: Response) -> dict[str, Any]:
+        """One message in, one answer out, plus the job it started if any."""
+        service: chat.Chat = request.app.state.chat
+        sid = request.cookies.get("nsid") or uuid.uuid4().hex[:20]
+        data = service.handle(
+            sid,
+            message=payload.get("message"),
+            advance=bool(payload.get("advance")),
+        )
+        response.set_cookie("nsid", sid, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30)
+        return data
+
+    @app.get("/api/chat/history", operation_id="chat_history")
+    def chat_history(request: Request, response: Response) -> dict[str, Any]:
+        """Everything said in this session, for a page that just opened."""
+        service: chat.Chat = request.app.state.chat
+        sid = request.cookies.get("nsid") or uuid.uuid4().hex[:20]
+        response.set_cookie("nsid", sid, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30)
+        return service.history(sid)
 
     @app.exception_handler(HTTPException)
     async def http_error(_request: Request, exc: HTTPException) -> JSONResponse:

@@ -79,6 +79,10 @@ Not run. Waiting on a golden set and 10 identical `Combo`s.
 | 2026-11-09 | Coverage measured with `omit = ["data/*", "tests/*"]` | The pattern `*/data/*` also cut the whole repo because the repo lives under `/opt/data` | Coverage reads correctly at 80% |
 | 2026-11-09 | Soul v1 → v2: translation to English | The constitution must be readable in the repo's language; meaning of all seven articles preserved | Every cached artefact invalidated; nothing in production yet |
 | 2026-11-09 | `soul bump` and `soul verify` bypass the implicit soul check in the CLI | A deliberate change could otherwise never be ratified, because every command halts on mismatch | The ceremony stays reachable while the hash is broken |
+| 2026-11-10 | The console is a chat, not a three-step form | A form forces the writer to fill fields that do not matter yet; a conversation asks only what is missing and accepts a full brief in one message | `POST /api/chat` replaces the screen; the old form endpoints stay for the CLI's sake |
+| 2026-11-10 | The chat reads a message with rules first, then a model | Rules are exact for URLs, handles, counts and durations and never fail; the model is only needed for topic and audience | `NARATHOR_CHAT_MODEL=off` still produces a working console |
+| 2026-11-10 | The public page carries the name and one line, no demo scripts | Fixture output under the product's name reads as a result nobody asked for | `site/` no longer ships `scripts/`; the console is where output lives |
+| 2026-11-10 | A failed run names the words the library actually uses | A lexical matcher cannot invent a topic; when zero scripts pass the gates the user needs to know what the transcripts talk about | `library_hints` in `backend/chat.py` |
 
 ---
 
