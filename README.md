@@ -132,6 +132,7 @@ Tools it can call:
 - `fetch_channel` — read a channel's video tab into the library
 - `ingest` — pull transcripts, captions first
 - `assemble` — compose the brief from what you said and run the pipeline
+- `search_youtube` — find what already exists on YouTube for a topic
 - `web_search` — look up facts, news and examples outside the library
 
 Long work runs as a job and its log is appended to the same conversation. After a job ends,
@@ -148,8 +149,10 @@ one; Enter runs it. The list is defined once in `backend/skills.py` and served f
 
 | Command | What it does |
 |---|---|
-| `/channel <link\|@handle>` | read the channel's video tab into the library |
-| `/cari <keywords>` | search the web and list the top hits |
+| `/channel <link\|@handle>` | read a channel and report what is inside it |
+| `/isi` | show that report again |
+| `/cari <keywords>` | search YouTube videos, not the open web |
+| `/web <keywords>` | search the open web, for facts and news |
 | `/ingest [n]` | fetch transcripts for videos that have none |
 | `/naskah [n]` | run the pipeline on the brief built so far |
 | `/topik <sentence>` | set the topic |
@@ -166,9 +169,9 @@ chat starts by asking for a link instead of announcing work it never did.
 
 ### Web search
 
-The console can leave the machine. `cari inflasi indonesia terbaru`, `/cari ...`, or a
-question the model decides needs outside facts all run through `search/web.py`, which tries
-providers in order and stops at the first answer that covers at least half the query:
+`/web` is the open web, for facts and news. It is deliberately not the default, because a
+question about content is answered better on YouTube. `search/web.py` tries providers in
+order and stops at the first answer that covers at least half the query:
 
 1. Brave, only when `BRAVE_API_KEY` is set
 2. Bing's result page, with its click trackers unwrapped back into real URLs
@@ -185,6 +188,25 @@ question about "startup gagal di Asia Tenggara". The hits stay in the session, a
 Search informs the angle and the topic. It never becomes a citation inside a script: the
 rule that every sentence traces back to a spoken second still holds, so the writer keeps
 quoting transcripts only.
+
+### YouTube search and the channel read
+
+`/cari burnout kerja` searches YouTube and prints each hit with its length, view count and
+channel. That is the useful question most of the time: what already exists here, and how did
+it do. `search/youtube.py` reads yt-dlp's search results, so it needs no key and no
+transcript, which means it keeps working on an IP where YouTube refuses transcripts.
+
+Pasting a channel link does more than fill the library. One scrape produces a profile:
+subscriber count, the channel's own description and tags, every title with its duration and
+views. From that, `ingest/profile.py` prints five checkable lines (size, format, what
+performed, repeated words, description) and the `profile` model writes five more: what the
+channel is, its format, why the top video worked, the gap nobody filled, and one script idea
+from that gap. `/isi` shows the same read again without paying for the model twice.
+
+The `profile` role needs its own budget. It runs a reasoning model, and at the writer's 500
+token budget the answer came back empty with `finish_reason=length` because every token went
+to thinking. It now gets 1800 tokens and 40 seconds, and the profile arrives in about twenty
+seconds while the transcripts are still being fetched.
 
 ```bash
 # 1. a token, so a tunnel is not an open door

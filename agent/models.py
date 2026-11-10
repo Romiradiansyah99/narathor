@@ -14,6 +14,10 @@ USER_AGENT = "narathor/0.1"
 # nama alat. Peran yang menulis naskah dapat anggaran penuh.
 ROLE_LIMITS: dict[str, dict[str, float]] = {
     "router": {"max_completion_tokens": 200, "timeout": 8.0, "temperature": 0.2},
+    # A reasoning model spends tokens before it writes any. Five hundred was the whole
+    # budget and the answer arrived empty with finish_reason=length, so the profile gets
+    # room to think and a longer clock.
+    "profile": {"max_completion_tokens": 1800, "timeout": 40.0, "temperature": 0.4},
 }
 
 

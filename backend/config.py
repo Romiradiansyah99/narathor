@@ -17,6 +17,10 @@ DEFAULT_MODELS: dict[str, str] = {
     "curator": "deepseek/deepseek-v4.1-flash",
     "matcher": "deepseek/deepseek-v4.1-flash",
     "writer": "deepseek/deepseek-v4.1-flash",
+    # The profile reads a whole channel at once. It needs room to think before it
+    # writes: the same model that answers in one sentence will spend its entire
+    # budget on reasoning and return nothing if the budget is small.
+    "profile": "deepseek/deepseek-v4.1-flash",
     "critic": "claude-haiku-5-5",
     "eval": "stealth/crouton-alpha",
 }

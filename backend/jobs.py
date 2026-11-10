@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-JobKind = Literal["channel", "ingest", "run"]
+JobKind = Literal["channel", "profile", "ingest", "run"]
 JobStatus = Literal["queued", "running", "done", "failed"]
 
 MAX_LOG_LINES = 400

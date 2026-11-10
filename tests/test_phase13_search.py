@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from backend import chat
-from search import web
+from search import web, youtube
 
 # --------------------------------------------------------------------------- #
 # Scoring: the difference between a result and a random page
@@ -123,6 +123,27 @@ def _fake_search(monkeypatch: pytest.MonkeyPatch, rows: list[web.Result]) -> lis
     return calls
 
 
+def _fake_youtube(monkeypatch: pytest.MonkeyPatch, hits: list[youtube.Hit]) -> list[str]:
+    calls: list[str] = []
+
+    def fake(query: str, limit: int = 6) -> list[youtube.Hit]:
+        calls.append(query)
+        return hits[:limit]
+
+    monkeypatch.setattr(youtube, "find_videos", fake)
+    return calls
+
+
+def _hit(title: str, views: int = 1000, seconds: int = 300) -> youtube.Hit:
+    return youtube.Hit(
+        video_id="vid-" + str(abs(hash(title)) % 10_000),
+        title=title,
+        channel="Channel",
+        duration_s=seconds,
+        views=views,
+    )
+
+
 def _chat(settings, monkeypatch: pytest.MonkeyPatch, **state: Any):
     from tests.test_phase11_chat import FakeJobs, _patch_db
 
@@ -137,33 +158,54 @@ def _chat(settings, monkeypatch: pytest.MonkeyPatch, **state: Any):
     return chat.Chat(settings=settings, engine=object(), jobs=jobs, llm=llm), model_calls
 
 
-def test_cari_searches_without_waiting_for_the_model(
+def test_cari_searches_youtube_without_waiting_for_the_model(
     settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls = _fake_search(monkeypatch, [_row("Inflasi Indonesia", "naik 3,2 persen")])
+    """The question is almost always what already exists, and that lives on YouTube."""
+    calls = _fake_youtube(monkeypatch, [_hit("Burnout pada anak muda")])
     service, model_calls = _chat(settings, monkeypatch)
-    reply = service.handle("s", "cari inflasi indonesia")["reply"]
-    assert "hasil" in reply[0]
-    assert calls == ["inflasi indonesia"]
+    reply = service.handle("s", "cari burnout anak muda")["reply"]
+    assert reply[0].startswith("youtube")
+    assert "Burnout pada anak muda" in reply[1]
+    assert calls == ["burnout anak muda"]
     assert model_calls == []
 
 
-def test_cari_says_nothing_when_the_web_says_nothing(
+def test_cari_falls_back_to_the_web_when_youtube_is_silent(
     settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _fake_youtube(monkeypatch, [])
+    web_calls = _fake_search(monkeypatch, [_row("Inflasi Indonesia", "naik")])
+    service, _model = _chat(settings, monkeypatch)
+    reply = service.handle("s", "cari inflasi indonesia")["reply"]
+    assert "web" in reply[0]
+    assert web_calls == ["inflasi indonesia"]
+
+
+def test_slash_web_goes_straight_to_the_web(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    youtube_calls = _fake_youtube(monkeypatch, [_hit("video")])
+    web_calls = _fake_search(monkeypatch, [_row("Inflasi Indonesia", "naik")])
+    service, _model = _chat(settings, monkeypatch)
+    reply = service.handle("s", "/web inflasi indonesia")["reply"]
+    assert reply[0].startswith("hasil web")
+    assert web_calls == ["inflasi indonesia"]
+    assert youtube_calls == []
+
+
+def test_search_says_nothing_when_both_are_silent(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake_youtube(monkeypatch, [])
     _fake_search(monkeypatch, [])
     service, _model = _chat(settings, monkeypatch)
     reply = " ".join(service.handle("s", "cari topik yang tidak ada")["reply"])
     assert "nol" in reply
 
 
-def test_cari_keeps_the_hits_for_the_next_turn(settings, monkeypatch: pytest.MonkeyPatch) -> None:
-    _fake_search(
+def test_search_hits_stay_for_the_next_turn(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_youtube(
         monkeypatch,
-        [
-            _row("Kegagalan startup Asia Tenggara", "struktur rapuh"),
-            _row("Startup tutup karena struktur", "bukan modal"),
-        ],
+        [_hit("Kegagalan startup Asia Tenggara"), _hit("Startup tutup karena struktur")],
     )
     service, _model = _chat(settings, monkeypatch)
     service.handle("s", "cari startup gagal")
@@ -188,10 +230,10 @@ def test_a_channel_link_is_never_sent_to_the_web(settings, monkeypatch: pytest.M
 
 
 def test_slash_cari_uses_the_same_path(settings, monkeypatch: pytest.MonkeyPatch) -> None:
-    calls = _fake_search(monkeypatch, [_row("Inflasi Indonesia", "naik")])
+    calls = _fake_youtube(monkeypatch, [_hit("Inflasi Indonesia")])
     service, model_calls = _chat(settings, monkeypatch)
     reply = service.handle("s", "/cari inflasi indonesia")["reply"]
-    assert "hasil" in reply[0]
+    assert reply[0].startswith("youtube")
     assert calls == ["inflasi indonesia"]
     assert model_calls == []
 

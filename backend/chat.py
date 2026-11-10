@@ -43,6 +43,7 @@ SEARCH_RE = re.compile(
 )
 PICK_RE = re.compile(r"^pakai\s+(?:nomor\s+|hasil\s+|yang\s+)?(\d{1,2})\b", re.I)
 SEARCH_LIMIT = 5
+PROFILE_CLIPS = 25
 COUNT_RE = re.compile(r"\b(\d{1,2})\s*(?:naskah|script|naskahnya|video|vid)\b", re.I)
 DURATION_RE = re.compile(r"\b(\d{1,2})\s*(?:detik|detiknya|sec|second|s)\b", re.I)
 
@@ -141,16 +142,17 @@ ATURAN:
 Balas JSON dengan bentuk ini:
 {"say": "kalimat kamu", "tool": null, "args": {}}
 
-tool hanya boleh: null, "fetch_channel", "ingest", "assemble", "web_search".
+tool hanya boleh: null, "fetch_channel", "ingest", "assemble", "search_youtube", "web_search".
 args:
 - fetch_channel: {"url": "https://www.youtube.com/@handle"}
 - ingest: {"limit": 25}
 - assemble: {"topic": "...", "audience": "...", "tone": "...", "count": 2, "duration": 15}
+- search_youtube: {"query": "kata kunci pendek"}
 - web_search: {"query": "kata kunci pendek"}
 
-Pakai web_search kalau user minta data, berita, contoh, atau fakta dari luar, atau kalau
-kamu butuh konteks yang tidak ada di transkrip. Jangan pakai web_search untuk pertanyaan
-soal percakapan ini, channel, atau isi pustaka."""
+Kalau user mau lihat referensi, pembanding, atau apa yang sudah ada di youtube, pakai
+search_youtube. Kalau user butuh fakta, angka, berita, atau definisi, pakai web_search.
+Jangan pakai dua-duanya untuk satu pertanyaan yang sama."""
 
 
 def agent_prompt(session: Session, state: dict[str, Any]) -> str:
@@ -166,6 +168,10 @@ def agent_prompt(session: Session, state: dict[str, Any]) -> str:
         f"jumlah naskah: {session.slots.get('count') or 'belum disebut'}",
         f"alat yang sudah dipanggil untuk pesan ini: {session.tool_calls}",
     ]
+    if session.slots.get("profile_lines"):
+        lines.append("")
+        lines.append("ISI CHANNEL")
+        lines.extend(str(item) for item in session.slots["profile_lines"][:6])
     if session.notes:
         lines.append("")
         lines.append("HASIL ALAT TERAKHIR")
@@ -212,6 +218,24 @@ def parse_plan(raw: str) -> dict[str, Any] | None:
     }
 
 
+PROFILE_SYSTEM = """Kamu analis konten yang sudah lama kerja di agency. Kamu membaca sebuah channel
+dari metadatanya, bukan dari asumsimu. Kalau datanya tidak cukup untuk satu poin, bilang tidak
+cukup, jangan menebak."""
+
+PROFILE_PROMPT = """Ini metadata sebuah channel youtube.
+
+{material}
+
+Tulis 5 baris, satu poin per baris, Bahasa Indonesia santai, tanpa emoji, tanpa pembuka:
+1. channel ini isinya apa, satu kalimat
+2. format yang dipakai, lihat durasi dan pola judulnya
+3. video yang paling laku dan kenapa itu masuk akal
+4. sudut yang belum diisi channel ini, celahnya
+5. satu ide naskah pendek yang bisa diambil dari celah itu
+
+Jangan mengarang angka. Jangan mengulang judul video apa adanya."""
+
+
 PLANNER_PROMPT = """Baca pesan user, keluarkan objek JSON dengan kunci berikut:
 channel_url (link atau @handle channel YouTube, null kalau tidak ada),
 topic (topik naskah, satu frasa pendek, null kalau tidak ada),
@@ -238,6 +262,7 @@ class Session:
     attempted_url: str = ""
     last_channel_error: str = ""
     research: list[dict[str, str]] = field(default_factory=list)
+    profile_tried: bool = False
     ingest_tried: bool = False
     ran: bool = False
     pending_job: str | None = None
@@ -256,6 +281,7 @@ class Session:
             "attempted_url": self.attempted_url,
             "last_channel_error": self.last_channel_error,
             "research": self.research,
+            "profile_tried": self.profile_tried,
             "ingest_tried": self.ingest_tried,
             "ran": self.ran,
             "pending_job": self.pending_job,
@@ -276,6 +302,7 @@ class Session:
             attempted_url=str(payload.get("attempted_url") or ""),
             last_channel_error=str(payload.get("last_channel_error") or ""),
             research=[dict(row) for row in payload.get("research") or [] if isinstance(row, dict)],
+            profile_tried=bool(payload.get("profile_tried")),
             ingest_tried=bool(payload.get("ingest_tried")),
             ran=bool(payload.get("ran")),
             pending_job=payload.get("pending_job"),
@@ -337,6 +364,23 @@ def _url_from(text: str) -> str | None:
     if match:
         return f"https://www.youtube.com/@{match.group(1)}"
     return None
+
+
+def _wrap(text: str, width: int = 240) -> list[str]:
+    """Break a paragraph into lines that fit a phone without cutting a word."""
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if len(candidate) > width and current:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
 
 
 def _same_channel(left: str, right: str) -> bool:
@@ -689,6 +733,8 @@ class Chat:
         self.store = store or SessionStore(settings.output_dir / "_chat")
         self._llm = llm
         self._llm_ready = llm is not None
+        self._writer: Callable[[str], str] | None = None
+        self._writer_ready = False
 
     # -- model ---------------------------------------------------------- #
 
@@ -711,6 +757,31 @@ class Chat:
             except Exception:
                 self._llm = None
         return self._llm
+
+    def writer(self) -> Callable[[str], str] | None:
+        """The writing model, built once. Used for the channel read, not for routing.
+
+        Routing needs speed and a tiny budget; reading a channel needs judgment. They
+        are different jobs, so they are different models, and either can be turned off
+        with NARATHOR_PROFILE_MODEL=off without losing the console.
+        """
+        if self._writer_ready:
+            return self._writer
+        self._writer_ready = True
+        if os.environ.get("NARATHOR_PROFILE_MODEL", "").strip().lower() in {"off", "0", "no"}:
+            return None
+        try:
+            from agent.models import for_role
+
+            writing = for_role("profile")
+
+            def call(prompt: str) -> str:
+                return writing.complete(prompt, system=PROFILE_SYSTEM)
+
+            self._writer = call
+        except Exception:
+            self._writer = None
+        return self._writer
 
     # -- public --------------------------------------------------------- #
 
@@ -784,6 +855,17 @@ class Chat:
                 "job_kind": job.kind if job else None,
             }
         elif advance and session.pending_job:
+            job = self.jobs.get(str(session.pending_job))
+            if job is not None and job.status in {"queued", "running"}:
+                # An early poll must not consume a job that has not finished: doing so
+                # threw the result away and the console said the work came back empty.
+                return {
+                    "sid": session.sid,
+                    "reply": [],
+                    "job_id": job.job_id,
+                    "job_kind": job.kind,
+                    "pending": True,
+                }
             session.last_text = ""
             observation = self._observe(session)
             session.pending_job = None
@@ -873,7 +955,27 @@ class Chat:
         return query or None
 
     def _search_lines(self, session: Session, query: str) -> list[str]:
-        """Search the web and print what came back, with a door back to the brief."""
+        """Search inside YouTube first: the question is almost always about content."""
+        from search.youtube import find_videos
+
+        try:
+            hits = find_videos(query, limit=SEARCH_LIMIT)
+        except Exception as exc:
+            session.notes.append(f"youtube_search '{query}' gagal: {type(exc).__name__}")
+            hits = []
+        if not hits:
+            return self._web_lines(session, query, note="youtube nggak balas, gue cari di web:")
+        session.research = [hit.as_dict() for hit in hits]
+        session.notes.append(f"youtube_search '{query}': {len(hits)} video")
+        lines = [f'youtube "{query}":']
+        for index, hit in enumerate(hits, 1):
+            lines.append(f"{index}. {hit.line()}")
+            lines.append(f"   {hit.url}")
+        lines.append('mau topiknya dari salah satu ini? bilang "pakai 2".')
+        return lines
+
+    def _web_lines(self, session: Session, query: str, note: str = "") -> list[str]:
+        """The open web, for facts and news rather than for what already exists."""
         from search.web import search
 
         rows, problems = search(query, limit=SEARCH_LIMIT)
@@ -882,11 +984,11 @@ class Chat:
             reason = problems[-1] if problems else "nggak ada yang balas"
             session.notes.append(f"web_search '{query}': nol hasil ({reason})")
             return [
-                f'gue cari "{query}" tapi hasilnya nol.',
+                f'gue cari "{query}" di youtube dan di web, dua-duanya nol.',
                 "coba kata kunci yang lebih spesifik, atau pakai bahasa inggris.",
             ]
         session.notes.append(f"web_search '{query}': {len(rows)} hasil, sumber {rows[0].source}")
-        lines = [f'hasil "{query}":']
+        lines = [note or f'hasil web "{query}":']
         for index, row in enumerate(rows, 1):
             lines.append(f"{index}. {row.title[:95]}")
             detail = f"   {row.domain}"
@@ -979,12 +1081,16 @@ class Chat:
         if tool == "assemble" and session.ran:
             return ([say or "yang tadi udah kelar, hasilnya di atas."], None)
 
-        if tool == "web_search":
+        if tool in {"search_youtube", "web_search"}:
             query = str(args.get("query") or session.last_text or "").strip()
             if not query:
                 return ([say or "cari apa? satu kata kunci aja."], None)
             session.tool_calls += 1
-            lines = self._search_lines(session, query)
+            lines = (
+                self._search_lines(session, query)
+                if tool == "search_youtube"
+                else self._web_lines(session, query)
+            )
             return ([say, *lines] if say else lines, None)
 
         job, problem = self._start_tool(session, tool, args)
@@ -1062,7 +1168,15 @@ class Chat:
             channel_id = str(result.get("channel_id") or "")
             if channel_id:
                 session.slots["channel_id"] = channel_id
+            session.slots["profile"] = result.get("profile") or {}
+            session.slots["profile_lines"] = result.get("profile_lines") or []
+            session.slots["profile_written"] = result.get("profile_written") or []
             return f"fetch_channel selesai: {result.get('videos', 0)} video masuk pustaka."
+        if job.kind == "profile":
+            session.slots["profile"] = result.get("profile") or {}
+            session.slots["profile_lines"] = result.get("profile_lines") or []
+            session.slots["profile_written"] = result.get("profile_written") or []
+            return f"profile selesai: {len(result.get('profile_lines') or [])} baris isi channel."
         if job.kind == "ingest":
             return (
                 "ingest selesai: "
@@ -1102,11 +1216,57 @@ class Chat:
         """Every command, one line each."""
         return (skills.help_lines(), None)
 
+    def _profile_writeup(self, session: Session, profile: Any) -> list[str]:
+        """A written read of the channel, from the metadata a model can actually use.
+
+        The facts above it are checkable; this is the part that needs judgment. It is
+        optional on purpose: no key or no answer means five honest lines instead of a
+        sentence that pretends to know more than the data shows.
+        """
+        writer = self.writer()
+        if writer is None:
+            return []
+        from ingest.profile import model_brief
+
+        try:
+            raw = writer(PROFILE_PROMPT.format(material=model_brief(profile)))
+        except Exception:
+            return []
+        points = [line.strip() for line in str(raw).splitlines() if line.strip()]
+        return [wrapped for point in points for wrapped in _wrap(point, width=240)]
+
     def _cmd_cari(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
-        """Search the web from the console, without waiting for a model."""
+        """Search inside YouTube, without waiting for a model."""
         if not arg:
-            return (["pakai: /cari inflasi indonesia terbaru"], None)
+            return (["pakai: /cari burnout kerja anak muda"], None)
         return (self._search_lines(session, arg), None)
+
+    def _cmd_web(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Search the open web, for facts and news rather than for content."""
+        if not arg:
+            return (["pakai: /web inflasi indonesia terbaru"], None)
+        return (self._web_lines(session, arg), None)
+
+    def _cmd_isi(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """What the channel actually contains, read from its own metadata."""
+        from ingest.profile import Profile, overview
+
+        payload = session.slots.get("profile") or {}
+        if not payload:
+            return (["profil channel belum ada. kasih link channel dulu."], None)
+        profile = Profile.from_dict(payload)
+        lines = overview(profile)
+        written = [str(line) for line in session.slots.get("profile_written") or []]
+        if not written:
+            # The read is written once and kept: asking again must not cost another
+            # fifteen seconds of a reasoning model for the same paragraph.
+            written = self._profile_writeup(session, profile)
+            if written:
+                session.slots["profile_written"] = written
+        if written:
+            lines.append("")
+            lines.extend(written)
+        return (lines, None)
 
     def _cmd_status(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
         """What this conversation has read so far."""
@@ -1285,13 +1445,33 @@ class Chat:
         if note.startswith("fetch_channel selesai"):
             if videos == 0:
                 return (["channel-nya kebaca, tapi videonya nol. coba link lain."], None)
+            lines = [f"{videos} video masuk."]
+            lines.extend(str(line) for line in session.slots.get("profile_lines") or [])
+            written = [str(line) for line in session.slots.get("profile_written") or []]
+            if written:
+                lines.append("")
+                lines.extend(written)
             if transcripts == 0 and session.tool_calls < 3:
                 session.tool_calls += 1
-                return (
-                    [f"{videos} video masuk. transkripnya gue ambil dulu."],
-                    self._ingest_job(session, videos),
-                )
-            return ([f"{videos} video masuk, {transcripts} transkrip siap. topiknya apa?"], None)
+                lines.append("transkripnya gue ambil dulu, biar naskahnya bisa nyitir detiknya.")
+                return (lines, self._ingest_job(session, videos))
+            lines.append(f"{transcripts} transkrip siap. topiknya apa?")
+            return (lines, None)
+        if note.startswith("profile selesai"):
+            lines = [str(line) for line in session.slots.get("profile_lines") or []]
+            written = [str(line) for line in session.slots.get("profile_written") or []]
+            if not lines:
+                return (["isi channelnya nggak kebaca, tapi pustakanya tetap ada."], None)
+            if written:
+                lines.append("")
+                lines.extend(written)
+            _channel_now, videos_now, transcripts_now = self._counts(session)
+            if transcripts_now == 0 and session.tool_calls < 3:
+                session.tool_calls += 1
+                lines.append("transkripnya gue ambil dulu.")
+                return (lines, self._ingest_job(session, videos_now))
+            lines.append("mau bikin naskah soal apa? satu kalimat aja.")
+            return (lines, None)
         if note.startswith("ingest selesai"):
             if transcripts == 0:
                 return (
@@ -1417,6 +1597,9 @@ class Chat:
             )
 
         if not slots.get("topic"):
+            if videos and not session.profile_tried and not session.slots.get("profile"):
+                session.profile_tried = True
+                return (["bentar, gue baca dulu isi channelnya."], self._profile_job(session, url))
             return (
                 [
                     f"dapet {videos} video.",
@@ -1487,25 +1670,77 @@ class Chat:
     # -- jobs ----------------------------------------------------------- #
 
     def _channel_job(self, session: Session, url: str) -> Job:
-        """Read the channel's video tab into the library."""
-        from ingest.channel import discover
+        """Read the channel once: its video tab, and what those videos say about it.
 
-        limit = 25
+        One scrape feeds both. Fetching the tab twice would double the wait for a
+        report that should arrive while the user is still reading the first line.
+        """
+        from contracts import Channel, Video
+        from ingest.profile import fetch as fetch_profile
+        from ingest.profile import overview
+
+        limit = PROFILE_CLIPS
         engine = self.engine
 
         def work(log: Callable[[str], None]) -> dict[str, Any]:
-            channel, found = discover(url, limit=limit, log=log)
-            log(f"ketemu {len(found)} video di {channel.name}")
+            prof = fetch_profile(url, limit=limit)
+            log(f"ketemu {len(prof.clips)} video di {prof.name}")
+            channel = Channel(
+                channel_id=prof.channel_id,
+                name=prof.name,
+                handle=prof.handle,
+                url=prof.url,
+            )
+            found = [
+                Video(
+                    video_id=clip.video_id,
+                    title=clip.title,
+                    duration_s=max(clip.duration_s, 0),
+                    url=f"https://www.youtube.com/watch?v={clip.video_id}",
+                )
+                for clip in prof.clips
+            ]
             db.save_library(engine, channel, found)
             mine = db.fetch_videos_for_channel(engine, channel.channel_id)
             log(f"pustaka channel ini {len(mine)} video")
+            profile_lines = overview(prof)
+            log(f"isi channel kebaca: {len(prof.clips)} video, {prof.followers} subscriber")
+            written = self._profile_writeup(session, prof)
             return {
                 "channel": channel.name,
                 "channel_id": channel.channel_id,
                 "videos": len(mine),
+                "profile": prof.as_dict(),
+                "profile_lines": profile_lines,
+                "profile_written": written,
             }
 
         return self.jobs.start("channel", f"channel {url}", work)
+
+    def _profile_job(self, session: Session, url: str) -> Job:
+        """Read what a channel already in the library actually contains.
+
+        Used when the channel was fetched in an earlier conversation: the library has
+        the videos, but this session still has no idea what they are about.
+        """
+        from ingest.profile import fetch as fetch_profile
+        from ingest.profile import overview
+
+        limit = PROFILE_CLIPS
+
+        def work(log: Callable[[str], None]) -> dict[str, Any]:
+            prof = fetch_profile(url, limit=limit)
+            log(f"{len(prof.clips)} video kebaca di {prof.name}")
+            lines = overview(prof)
+            written = self._profile_writeup(session, prof)
+            return {
+                "channel": prof.name,
+                "profile": prof.as_dict(),
+                "profile_lines": lines,
+                "profile_written": written,
+            }
+
+        return self.jobs.start("profile", f"isi {url}", work)
 
     def _ingest_job(self, session: Session, videos: int) -> Job:
         """Fetch transcripts: captions first, Whisper second."""

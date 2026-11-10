@@ -34,8 +34,10 @@ class Skill:
 
 
 SKILLS: tuple[Skill, ...] = (
-    Skill("channel", "<link|@handle>", "baca daftar video channel ke pustaka"),
-    Skill("cari", "<kata kunci>", "cari di internet, ambil hasil teratas"),
+    Skill("channel", "<link|@handle>", "baca daftar video channel, langsung isi dalemannya"),
+    Skill("isi", "", "isi channel ini: format, yang laku, celahnya"),
+    Skill("cari", "<kata kunci>", "cari video di youtube, bukan di web"),
+    Skill("web", "<kata kunci>", "cari di web umum, buat fakta dan berita"),
     Skill("ingest", "[jumlah]", "tarik transkrip video yang belum ada"),
     Skill("naskah", "[jumlah]", "rakit naskah dari topik yang sudah disebut"),
     Skill("topik", "<satu kalimat>", "tentukan topik naskah"),

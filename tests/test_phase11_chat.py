@@ -359,6 +359,8 @@ def test_advance_after_a_run_does_not_start_it_again(
     _open(service)
     service.handle("abc", "bikin 2 naskah soal uang")
     assert job_kinds(jobs) == ["run"]
+    jobs.jobs["job-run-0"].status = "done"
+    jobs.jobs["job-run-0"].result = {"scripts": 0, "block": ""}
     answer = service.handle("abc", advance=True)
     assert answer["job_id"] is None
     assert job_kinds(jobs) == ["run"]
@@ -369,6 +371,13 @@ def test_a_second_ingest_is_not_started_twice(settings, monkeypatch: pytest.Monk
     _open(service)
     service.handle("abc", "bikin naskah soal uang")
     assert job_kinds(jobs) == ["ingest"]
+    jobs.jobs["job-ingest-0"].status = "done"
+    jobs.jobs["job-ingest-0"].result = {
+        "ingested": [],
+        "cached": [],
+        "skipped": ["VID-0001"],
+        "blocked": 1,
+    }
     answer = service.handle("abc", advance=True)
     assert answer["job_id"] is None
     assert any("youtube" in line and "nolak" in line for line in answer["reply"])
