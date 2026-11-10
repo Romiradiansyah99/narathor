@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, Respons
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.engine import Engine
 
-from backend import chat, db, soul, ui
+from backend import chat, db, skills, soul, ui
 from backend.config import Settings, get_settings
 from backend.jobs import Job, Registry
 from briefs import load as briefs_load
@@ -379,7 +379,7 @@ def create_app(
             app.state.chat.model()
             from agent.models import for_role
 
-            for_role("matcher").complete("ok", system="balas: ok")
+            for_role("router").complete("ok", system="balas: ok")
         except Exception:
             pass
 
@@ -410,6 +410,11 @@ def create_app(
     def console() -> HTMLResponse:
         """The console page: a prompt, and whatever it has said so far."""
         return HTMLResponse(ui.page())
+
+    @app.get("/api/skills", operation_id="list_skills")
+    def list_skills() -> dict[str, Any]:
+        """The slash menu. Same list the chat answers with, so they cannot drift."""
+        return {"skills": skills.catalogue()}
 
     @app.post("/api/chat", operation_id="chat_turn")
     def chat_turn(payload: dict[str, Any], request: Request, response: Response) -> dict[str, Any]:

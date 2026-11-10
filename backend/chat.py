@@ -25,7 +25,7 @@ from typing import Any
 import yaml
 from sqlalchemy.engine import Engine
 
-from backend import db
+from backend import db, skills
 from backend.config import Settings
 from backend.jobs import Job, Registry
 from briefs import load as briefs_load
@@ -163,10 +163,27 @@ def agent_prompt(session: Session, state: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+SAY_RE = re.compile(r'"say"\s*:\s*"((?:[^"\\]|\\.)*)"')
+
+
 def parse_plan(raw: str) -> dict[str, Any] | None:
-    """Read the agent's JSON. Anything else is not a plan."""
+    """Read the agent's plan, even when the JSON arrived damaged.
+
+    The fast model sometimes runs out of budget mid-object. A truncated answer still
+    carries a usable sentence, and dropping it would turn a real reply into a canned
+    one, so the sentence is salvaged before giving up.
+    """
     payload = _parse_json(raw)
     if not payload:
+        salvaged = SAY_RE.search(raw)
+        if salvaged:
+            text = salvaged.group(1).encode().decode("unicode_escape", "ignore").strip()
+            if text:
+                return {"say": text, "tool": None, "args": {}}
+        prose = raw.strip()
+        claims_work = re.search(r"\b(?:gue|aku)\s+(?:ambil|rangkai|baca|jalankan|kerjain)\b", prose)
+        if prose and not prose.startswith("{") and len(prose) <= 400 and not claims_work:
+            return {"say": prose, "tool": None, "args": {}}
         return None
     say = payload.get("say")
     tool = payload.get("tool")
@@ -619,7 +636,7 @@ class Chat:
             try:
                 from agent.models import for_role
 
-                planner = for_role("matcher")
+                planner = for_role("router")
 
                 def call(prompt: str) -> str:
                     return planner.complete(prompt, system=AGENT_SYSTEM)
@@ -642,7 +659,8 @@ class Chat:
 
         if message and message.strip():
             text = message.strip()
-            if text.lower() in RESET_WORDS:
+            bare = text.lstrip("/").strip().lower()
+            if bare in RESET_WORDS:
                 session = Session(sid=session.sid)
                 session.messages.append({"role": "user", "text": text})
                 reply = ["oke, gue lupa semuanya. mulai dari channel youtube-nya."]
@@ -650,6 +668,21 @@ class Chat:
                 self.store.save(session)
                 return {"sid": session.sid, "reply": reply, "job_id": None, "messages": []}
             prefix: list[str] = []
+            command = self._command(session, text)
+            if command is not None:
+                reply, job = command
+                if job is not None:
+                    session.pending_job = job.job_id
+                    session.last_text = ""
+                session.messages.append({"role": "user", "text": text})
+                session.messages.extend({"role": "bot", "text": line} for line in reply)
+                self.store.save(session)
+                return {
+                    "sid": session.sid,
+                    "reply": reply,
+                    "job_id": job.job_id if job else None,
+                    "job_kind": job.kind if job else None,
+                }
             if looks_like_cookies(text):
                 path = save_cookies(self.settings, text)
                 session.tool_calls = 0
@@ -670,6 +703,8 @@ class Chat:
             session.ran = False
             reply, job = self._turn(session)
             reply = prefix + reply
+            if job is not None:
+                session.pending_job = job.job_id
             session.messages.extend({"role": "bot", "text": line} for line in reply)
             self.store.save(session)
             return {
@@ -685,6 +720,8 @@ class Chat:
             session.notes.append(observation)
 
         reply, job = self._turn(session)
+        if job is not None:
+            session.pending_job = job.job_id
         session.messages.extend({"role": "bot", "text": line} for line in reply)
         self.store.save(session)
         return {
@@ -698,6 +735,8 @@ class Chat:
 
     def _turn(self, session: Session) -> tuple[list[str], Job | None]:
         """Answer from the rules when the message is unambiguous, ask the model otherwise."""
+        if not session.last_text.strip():
+            return self._resume(session)
         cheap = self._cheap(session)
         if cheap is not None:
             return cheap
@@ -720,8 +759,8 @@ class Chat:
         lowered = text.lower()
         words = re.findall(r"[a-z]+", lowered)
         if lowered in GREETINGS:
-            return ([self._status_line()], None)
-        canned = self._canned(lowered)
+            return ([self._status_line(session)], None)
+        canned = self._canned(session, lowered)
         if canned is not None:
             return ([canned], None)
         rules = extract_rules(text)
@@ -736,9 +775,9 @@ class Chat:
             return self._next(session)
         return None
 
-    def _status_line(self) -> str:
-        """A greeting answered from the library itself, with no model call."""
-        channel, videos, transcripts = self._counts()
+    def _status_line(self, session: Session) -> str:
+        """A greeting answered from this conversation's own library, no model call."""
+        channel, videos, transcripts = self._counts(session)
         if channel is None:
             return "gue siap. mulai dari channel youtube kamu: tempel link atau @handle-nya."
         if transcripts:
@@ -751,7 +790,7 @@ class Chat:
             "kasih topik, nanti gue ambil transkripnya dulu."
         )
 
-    def _canned(self, lowered: str) -> str | None:
+    def _canned(self, session: Session, lowered: str) -> str | None:
         """Questions about the product itself, answered without waiting for a model."""
         for needles, answer in CANNED_ANSWERS:
             if any(needle in lowered for needle in needles):
@@ -759,22 +798,31 @@ class Chat:
         if any(
             needle in lowered for needle in ("status", "udah ada apa", "progres", "gimana kabar")
         ):
-            return self._status_line()
+            return self._status_line(session)
         return None
 
     def _think(self, session: Session, llm: Callable[[str], str]) -> dict[str, Any] | None:
         """One model call, one plan. A dead model is a missing plan, not a crash."""
-        channel, videos, transcripts = self._counts()
+        channel, videos, transcripts = self._counts(session)
         state = {
             "channel": channel.name if channel is not None else None,
             "videos": videos,
             "transcripts": transcripts,
         }
-        try:
-            raw = llm(agent_prompt(session, state))
-        except Exception:
-            return None
-        return parse_plan(raw)
+        prompt = agent_prompt(session, state)
+        for attempt in range(2):
+            try:
+                raw = llm(prompt)
+            except Exception as exc:
+                if os.environ.get("NARATHOR_CHAT_DEBUG"):
+                    print(f"[chat] router failed: {type(exc).__name__}: {exc}", flush=True)
+                return None
+            if os.environ.get("NARATHOR_CHAT_DEBUG"):
+                print(f"[chat] router raw ({attempt}): {raw[:160]!r}", flush=True)
+            plan = parse_plan(raw)
+            if plan is not None:
+                return plan
+        return None
 
     def _execute(self, session: Session, plan: dict[str, Any]) -> tuple[list[str], Job | None]:
         """Carry out the plan: say the line, and start the tool it asked for."""
@@ -841,9 +889,10 @@ class Chat:
                 }
             )
             if not session.slots.get("channel_url"):
-                channel, _videos, _transcripts = self._counts()
+                channel, _videos, _transcripts = self._counts(session)
                 if channel is not None:
                     session.slots["channel_url"] = channel.url
+                    session.slots["channel_id"] = channel.channel_id
             if not session.slots.get("topic"):
                 return None, "topiknya belum jelas, mau bikin naskah soal apa?"
             return self._start_run(session)
@@ -859,6 +908,9 @@ class Chat:
         if job.status == "failed":
             return f"{job.kind} gagal: {job.error or 'tanpa pesan'}"
         if job.kind == "channel":
+            channel_id = str(result.get("channel_id") or "")
+            if channel_id:
+                session.slots["channel_id"] = channel_id
             return f"fetch_channel selesai: {result.get('videos', 0)} video masuk pustaka."
         if job.kind == "ingest":
             return (
@@ -871,21 +923,259 @@ class Chat:
         block = str(result.get("block") or "")
         return f"assemble selesai: {result.get('scripts', 0)} naskah.\n{block[:900]}"
 
+    # -- commands ------------------------------------------------------- #
+
+    def _command(self, session: Session, text: str) -> tuple[list[str], Job | None] | None:
+        """A slash command. Known ones run here, unknown ones say so.
+
+        A command is a decision the user already made, so it never waits for a model.
+        """
+        if not text.startswith("/"):
+            return None
+        stripped = text[1:].strip()
+        if not stripped:
+            return (skills.help_lines(), None)
+        name, _, rest = stripped.partition(" ")
+        skill = skills.find(name)
+        if skill is None:
+            return (
+                [f"/{name} nggak ada di daftar. yang ada:", *skills.help_lines()],
+                None,
+            )
+        handler = getattr(self, f"_cmd_{skill.name}", None)
+        if handler is None:
+            return ([f"/{skill.name} belum nyambung ke mesin. laporin ya."], None)
+        return handler(session, rest.strip())
+
+    def _cmd_help(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Every command, one line each."""
+        return (skills.help_lines(), None)
+
+    def _cmd_status(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """What this conversation has read so far."""
+        channel, videos, transcripts = self._counts(session)
+        if channel is None:
+            return (["belum ada channel di percakapan ini. ketik /channel <link>."], None)
+        return ([f"{channel.name}: {videos} video, {transcripts} transkrip."], None)
+
+    def _cmd_channel(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Read a channel's video tab."""
+        if not arg:
+            return (["pakai: /channel https://youtube.com/@handle"], None)
+        url = _url_from(arg) or arg.strip()
+        session.slots["channel_url"] = url
+        session.slots.pop("channel_id", None)
+        session.channel_fetched = True
+        session.ingest_tried = False
+        session.ran = False
+        return (["gue baca dulu daftar video channel itu."], self._channel_job(session, url))
+
+    def _cmd_ingest(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Fetch transcripts for the videos already in the library."""
+        channel, videos, _transcripts = self._counts(session)
+        if channel is None:
+            return (["channel-nya belum ada. /channel <link> dulu."], None)
+        if videos == 0:
+            return (["pustaka channel ini kosong, belum ada yang bisa diambil."], None)
+        session.ingest_tried = True
+        return (
+            [f"transkrip buat {videos} video gue ambil dulu."],
+            self._ingest_job(session, videos),
+        )
+
+    def _cmd_naskah(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Run the pipeline on the brief built so far."""
+        _channel, _videos, transcripts = self._counts(session)
+        if session.slots.get("channel_url") is None:
+            return (["channel-nya belum ada. /channel <link> dulu."], None)
+        if transcripts == 0:
+            return (
+                ["transkripnya belum ada. /ingest dulu, atau tempel cookies kalau diblokir."],
+                None,
+            )
+        if arg.isdigit():
+            session.slots["count"] = max(1, min(20, int(arg)))
+        if not session.slots.get("topic"):
+            return (["topiknya mana? /topik uang masuk dan pergi"], None)
+        job, problem = self._start_run(session)
+        if problem:
+            return ([problem], None)
+        count = int(session.slots.get("count") or DEFAULT_COUNT)
+        return ([f"gue rangkai {count} naskah sekarang."], job)
+
+    def _cmd_topik(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Set the topic in one line."""
+        if not arg:
+            return ([f"topik sekarang: {session.slots.get('topic') or 'belum ada'}"], None)
+        session.slots["topic"] = arg
+        session.ran = False
+        return ([f"topik: {arg}"], None)
+
+    def _cmd_audiens(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Set who the scripts are for."""
+        if not arg:
+            return ([f"audiens sekarang: {session.slots.get('audience') or 'belum ada'}"], None)
+        session.slots["audience"] = arg
+        session.ran = False
+        return ([f"audiens: {arg}"], None)
+
+    def _cmd_brief(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Show the brief that would run right now."""
+        slots = session.slots
+        return (
+            [
+                f"topik: {slots.get('topic') or 'belum ada'}",
+                f"audiens: {slots.get('audience') or 'belum ada'}",
+                f"tone: {slots.get('tone') or DEFAULT_TONE}",
+                f"naskah: {slots.get('count') or DEFAULT_COUNT} x "
+                f"{slots.get('duration') or DEFAULT_DURATION} detik",
+            ],
+            None,
+        )
+
+    def _cmd_blocked(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """The segments the critic refused on the last run."""
+        runs = sorted(
+            (p for p in self.settings.output_dir.glob("*/blocked.md") if p.is_file()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not runs:
+            return (["belum ada run, jadi belum ada yang diblokir."], None)
+        try:
+            body = runs[0].read_text(encoding="utf-8").strip()
+        except OSError:
+            return (["file blocked.md nggak kebaca."], None)
+        if not body:
+            return (["blocked.md kosong, semua segmen lolos gate."], None)
+        return (body.splitlines()[:24], None)
+
+    def _cmd_doctor(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """The five checks, in chat."""
+        from backend import soul as soul_mod
+
+        channel, videos, transcripts = self._counts(session)
+        checks = [
+            (
+                "api key",
+                bool(self.settings.api_key),
+                "terisi" if self.settings.api_key else "kosong",
+            ),
+            (
+                "database",
+                True,
+                "sqlite" if self.settings.is_sqlite else "postgres",
+            ),
+            (
+                "soul",
+                soul_mod.verify(self.settings.soul_path, self.settings.soul_lock_path).ok,
+                "hash cocok",
+            ),
+            (
+                "pustaka",
+                channel is not None,
+                f"{videos} video, {transcripts} transkrip" if channel else "belum ada channel",
+            ),
+        ]
+        try:
+            from ingest import ytdlp
+
+            checks.append(
+                (
+                    "cookies",
+                    ytdlp.cookies_present(),
+                    "ada" if ytdlp.cookies_present() else "belum ada",
+                )
+            )
+        except Exception:
+            checks.append(("cookies", False, "modul nggak kebaca"))
+        return ([f"[{'ok' if ok else 'gagal'}] {name}: {note}" for name, ok, note in checks], None)
+
+    def _cmd_cookies(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """How to hand the console a browser session."""
+        return (
+            [
+                "pasang extension 'get cookies.txt' di chrome, buka youtube dalam keadaan login,",
+                "export, lalu tempel seluruh isi file ke kolom ini. gue simpan sendiri, nggak masuk git.",
+            ],
+            None,
+        )
+
+    def _cmd_reset(self, session: Session, arg: str) -> tuple[list[str], Job | None]:
+        """Reset is handled before dispatch; this keeps the registry honest."""
+        return (["ketik /reset lagi."], None)
+
+    def _resume(self, session: Session) -> tuple[list[str], Job | None]:
+        """What to say after a job, decided from the job itself, not the model."""
+        note = session.notes[-1] if session.notes else ""
+        _channel, videos, transcripts = self._counts(session)
+        if " gagal: " in note:
+            return ([note], None)
+        if note.startswith("fetch_channel selesai"):
+            if videos == 0:
+                return (["channel-nya kebaca, tapi videonya nol. coba link lain."], None)
+            if transcripts == 0 and session.tool_calls < 3:
+                session.tool_calls += 1
+                return (
+                    [f"{videos} video masuk. transkripnya gue ambil dulu."],
+                    self._ingest_job(session, videos),
+                )
+            return ([f"{videos} video masuk, {transcripts} transkrip siap. topiknya apa?"], None)
+        if note.startswith("ingest selesai"):
+            if transcripts == 0:
+                return (
+                    [
+                        "youtube tetap nolak transkrip dari server ini.",
+                        "tempel cookies.txt di kolom ini, atau bilang 'coba lagi' setelah cookies masuk.",
+                    ],
+                    None,
+                )
+            return (
+                [
+                    f"{transcripts} transkrip siap dari {videos} video. sekarang topiknya, satu kalimat."
+                ],
+                None,
+            )
+        if note.startswith("assemble selesai"):
+            return ([], None)
+        return ([], None)
+
     # -- decisions ------------------------------------------------------ #
 
-    def _counts(self) -> tuple[Any, int, int]:
-        """Channel, videos, transcripts. The only state that matters."""
-        channel = db.fetch_channel(self.engine)
-        videos = db.fetch_videos(self.engine)
+    def _counts(self, session: Session) -> tuple[Any, int, int]:
+        """Channel, videos, transcripts for this conversation only.
+
+        The library on disk is shared, so counting all of it would let a fresh chat
+        announce work it never did. A conversation counts what it actually read.
+        """
+        channel = self._channel(session)
+        if channel is None:
+            return None, 0, 0
+        videos = db.fetch_videos_for_channel(self.engine, channel.channel_id)
         transcripts = sum(
             1 for video in videos if db.fetch_transcript(self.engine, video.video_id) is not None
         )
         return channel, len(videos), transcripts
 
+    def _channel(self, session: Session) -> Any:
+        """The channel this conversation opened, None before the first link."""
+        channel_id = str(session.slots.get("channel_id") or "").strip()
+        if channel_id:
+            found = db.fetch_channel_by_id(self.engine, channel_id)
+            if found is not None:
+                return found
+        url = str(session.slots.get("channel_url") or "").strip()
+        if url:
+            found = db.fetch_channel_by_url(self.engine, url)
+            if found is not None:
+                session.slots["channel_id"] = found.channel_id
+            return found
+        return None
+
     def _next(self, session: Session) -> tuple[list[str], Job | None]:
         """What to say next, and the job to start if the next step is work."""
         slots = session.slots
-        channel, videos, transcripts = self._counts()
+        channel, videos, transcripts = self._counts(session)
 
         url = str(slots.get("channel_url") or "").strip()
         if not url and channel is not None:
@@ -992,9 +1282,14 @@ class Chat:
         def work(log: Callable[[str], None]) -> dict[str, Any]:
             channel, found = discover(url, limit=limit, log=log)
             log(f"ketemu {len(found)} video di {channel.name}")
-            counts = db.save_library(engine, channel, found)
-            log(f"pustaka sekarang {counts['videos']} video")
-            return {"channel": channel.name, "videos": counts["videos"]}
+            db.save_library(engine, channel, found)
+            mine = db.fetch_videos_for_channel(engine, channel.channel_id)
+            log(f"pustaka channel ini {len(mine)} video")
+            return {
+                "channel": channel.name,
+                "channel_id": channel.channel_id,
+                "videos": len(mine),
+            }
 
         return self.jobs.start("channel", f"channel {url}", work)
 
@@ -1005,6 +1300,7 @@ class Chat:
 
         engine = self.engine
         brief_id = session.brief_id
+        channel_id = str(session.slots.get("channel_id") or "")
         min_duration = MIN_DURATION_S
         if brief_id:
             try:
@@ -1021,7 +1317,12 @@ class Chat:
                     super().put(doc)
                     log(f"{doc.video_id}: {doc.source}, {len(doc.segments)} potongan")
 
-            rows = [v for v in db.fetch_videos(engine) if v.duration_s >= min_duration]
+            pool = (
+                db.fetch_videos_for_channel(engine, channel_id)
+                if channel_id
+                else db.fetch_videos(engine)
+            )
+            rows = [v for v in pool if v.duration_s >= min_duration]
             log(f"{len(rows)} video bakal diambil transkripnya")
             captions, whisper = default_fetchers()
             report = run_ingest(rows, LoggingStore(engine), captions, whisper)

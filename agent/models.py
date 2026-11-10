@@ -10,6 +10,12 @@ from backend.config import get_settings
 BASE_URL = os.environ.get("COMMAND_CODE_BASE_URL", "https://api.commandcode.ai/provider/v1")
 USER_AGENT = "narathor/0.1"
 
+# Peran yang menjawab langsung ke manusia dapat anggaran kecil: satu kalimat dan satu
+# nama alat. Peran yang menulis naskah dapat anggaran penuh.
+ROLE_LIMITS: dict[str, dict[str, float]] = {
+    "router": {"max_completion_tokens": 200, "timeout": 8.0, "temperature": 0.2},
+}
+
 
 class LanguageModel(Protocol):
     """Antarmuka minimal yang dibutuhkan agent. Stub test memakai protokol ini."""
@@ -45,6 +51,9 @@ class ProviderModel:
             raise RuntimeError("COMMAND_CODE_API_KEY kosong; isi .env sebelum memanggil model")
         self.role = role
         self.model_name = settings.models[role]
+        self.limits = ROLE_LIMITS.get(
+            role, {"max_completion_tokens": 500, "timeout": 10.0, "temperature": 0.3}
+        )
         self._client = None
 
     def _build(self):
@@ -54,10 +63,10 @@ class ProviderModel:
             model=self.model_name,
             api_key=get_settings().api_key,  # pyright: ignore[reportArgumentType]
             base_url=BASE_URL,
-            temperature=0.3,
+            temperature=float(self.limits["temperature"]),
             max_retries=0,
-            timeout=10.0,
-            max_completion_tokens=500,
+            timeout=float(self.limits["timeout"]),
+            max_completion_tokens=int(self.limits["max_completion_tokens"]),
             default_headers={"User-Agent": USER_AGENT, "X-Title": "Narathor"},
         )
 

@@ -48,6 +48,8 @@ class FakeChannel:
     def __init__(self, url: str = "https://www.youtube.com/@uji") -> None:
         self.url = url
         self.name = "Channel_Uji"
+        self.channel_id = "CH-1"
+        self.handle = "@uji"
 
 
 def _patch_db(
@@ -58,7 +60,11 @@ def _patch_db(
 ) -> None:
     rows = videos or []
     monkeypatch.setattr(chat.db, "fetch_channel", lambda _engine: channel)
+    monkeypatch.setattr(chat.db, "fetch_channel_by_id", lambda _engine, _cid: channel)
+    monkeypatch.setattr(chat.db, "fetch_channel_by_url", lambda _engine, _url: channel)
+    monkeypatch.setattr(chat.db, "fetch_channels", lambda _engine: [channel] if channel else [])
     monkeypatch.setattr(chat.db, "fetch_videos", lambda _engine: rows)
+    monkeypatch.setattr(chat.db, "fetch_videos_for_channel", lambda _engine, _cid: rows)
     monkeypatch.setattr(
         chat.db,
         "fetch_transcript",
@@ -178,6 +184,16 @@ def _chat(settings, monkeypatch: pytest.MonkeyPatch, **state: Any) -> tuple[chat
     return chat.Chat(settings=settings, engine=object(), jobs=jobs, llm=lambda _p: "{}"), jobs
 
 
+def _open(service: chat.Chat, sid: str = "abc") -> None:
+    """Put a channel in the conversation, the way a pasted link would."""
+    service.store.save(
+        chat.Session(
+            sid=sid,
+            slots={"channel_url": "https://www.youtube.com/@uji", "channel_id": "CH-1"},
+        )
+    )
+
+
 def _fast_chat(
     settings, monkeypatch: pytest.MonkeyPatch, **state: Any
 ) -> tuple[chat.Chat, FakeJobs, list[str]]:
@@ -218,8 +234,26 @@ def test_a_greeting_is_answered_from_the_library(settings, monkeypatch: pytest.M
         videos=[_video("VID-0001")],
         transcripts=1,
     )
+    _open(service)
     answer = service.handle("abc", "halo")
     assert "transkrip" in answer["reply"][0]
+    assert calls == []
+
+
+def test_a_greeting_in_a_fresh_chat_claims_nothing(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The library on disk is shared. A new conversation must not report it."""
+    service, _jobs, calls = _fast_chat(
+        settings,
+        monkeypatch,
+        channel=FakeChannel(),
+        videos=[_video("VID-0001"), _video("VID-0002")],
+        transcripts=2,
+    )
+    answer = service.handle("abc", "halo")
+    assert "video di pustaka" not in answer["reply"][0]
+    assert "channel" in answer["reply"][0]
     assert calls == []
 
 
@@ -233,6 +267,7 @@ def test_a_spelled_out_brief_never_waits_for_the_model(
         videos=[_video("VID-0001")],
         transcripts=1,
     )
+    _open(service)
     answer = service.handle("abc", "bikin 2 naskah soal uang buat pekerja muda, tone santai")
     assert answer["job_kind"] == "run"
     assert calls == []
@@ -273,6 +308,7 @@ def test_existing_channel_means_it_asks_for_a_topic(
         videos=[_video("VID-0001")],
         transcripts=1,
     )
+    _open(service)
     answer = service.handle("abc", "halo")
     assert any("soal apa" in line for line in answer["reply"])
     assert jobs.started == []
@@ -293,6 +329,7 @@ def test_missing_transcripts_start_an_ingest_job(settings, monkeypatch: pytest.M
         videos=[_video("VID-0001"), _video("VID-0002")],
         transcripts=0,
     )
+    _open(service)
     service.handle("abc", "bikin naskah soal uang")
     assert jobs.started[0]["kind"] == "ingest"
 
@@ -305,6 +342,7 @@ def test_ready_library_starts_a_run_job(settings, monkeypatch: pytest.MonkeyPatc
         videos=[_video("VID-0001")],
         transcripts=1,
     )
+    _open(service)
     answer = service.handle("abc", "bikin 2 naskah soal uang buat pekerja muda")
     assert answer["job_kind"] == "run"
     assert jobs.started[0]["kind"] == "run"
@@ -318,6 +356,7 @@ def test_advance_after_a_run_does_not_start_it_again(
     service, jobs = _chat(
         settings, monkeypatch, channel=FakeChannel(), videos=[_video("VID-0001")], transcripts=1
     )
+    _open(service)
     service.handle("abc", "bikin 2 naskah soal uang")
     assert job_kinds(jobs) == ["run"]
     answer = service.handle("abc", advance=True)
@@ -327,11 +366,12 @@ def test_advance_after_a_run_does_not_start_it_again(
 
 def test_a_second_ingest_is_not_started_twice(settings, monkeypatch: pytest.MonkeyPatch) -> None:
     service, jobs = _chat(settings, monkeypatch, channel=FakeChannel(), videos=[_video("VID-0001")])
+    _open(service)
     service.handle("abc", "bikin naskah soal uang")
     assert job_kinds(jobs) == ["ingest"]
     answer = service.handle("abc", advance=True)
     assert answer["job_id"] is None
-    assert any("youtube nolak mesin ini" in line for line in answer["reply"])
+    assert any("youtube" in line and "nolak" in line for line in answer["reply"])
 
 
 def job_kinds(jobs: FakeJobs) -> list[str]:
@@ -426,8 +466,11 @@ def test_parse_plan_treats_none_as_talk_only() -> None:
     assert plan["tool"] is None
 
 
-def test_parse_plan_rejects_prose() -> None:
-    assert chat.parse_plan("tentu, saya akan membantu") is None
+def test_parse_plan_keeps_prose_as_talk_only() -> None:
+    """Prose is usable as an answer, but it must never imply a tool ran."""
+    plan = chat.parse_plan("tentu, saya akan membantu")
+    assert plan is not None
+    assert plan["tool"] is None
 
 
 def test_agent_says_what_the_model_said(settings, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -449,12 +492,12 @@ def test_agent_starts_the_tool_it_asked_for(settings, monkeypatch: pytest.Monkey
     assert jobs.started[0]["kind"] == "channel"
 
 
-def test_agent_sees_the_job_result_and_answers_again(
+def test_after_a_blocked_ingest_it_asks_for_cookies(
     settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The job result is read by the rules, so the follow up costs no model call."""
     model = ScriptedModel(
         '{"say": "gue ambil transkripnya dulu.", "tool": "ingest", "args": {}}',
-        '{"say": "transkripnya kosong, youtube nolak mesin ini.", "tool": null, "args": {}}',
     )
     service, jobs = _agent(
         settings,
@@ -463,6 +506,7 @@ def test_agent_sees_the_job_result_and_answers_again(
         channel=FakeChannel(),
         videos=[_video("VID-0001")],
     )
+    _open(service)
     first = service.handle("abc", "bikin naskah soal uang")
     assert first["job_kind"] == "ingest"
     job = jobs.jobs[first["job_id"]]
@@ -470,8 +514,8 @@ def test_agent_sees_the_job_result_and_answers_again(
     job.result = {"ingested": [], "cached": [], "skipped": ["VID-0001"], "blocked": 1}
 
     second = service.handle("abc", advance=True)
-    assert second["reply"] == ["transkripnya kosong, youtube nolak mesin ini."]
-    assert "diblokir youtube 1" in model.prompts[-1]
+    assert any("cookies" in line for line in second["reply"])
+    assert len(model.prompts) == 1
 
 
 def test_agent_falls_back_when_the_model_talks_prose(
@@ -498,6 +542,7 @@ def test_agent_does_not_restart_a_finished_assemble(
         videos=[_video("VID-0001")],
         transcripts=1,
     )
+    _open(service)
     first = service.handle("abc", "bikin naskah soal uang")
     assert first["job_kind"] == "run"
     jobs.jobs[first["job_id"]].status = "done"
@@ -508,19 +553,21 @@ def test_agent_does_not_restart_a_finished_assemble(
     assert len(jobs.started) == 1
 
 
-def test_agent_stops_after_three_tool_calls(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_advance_never_restarts_the_pipeline(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Repeated advances read the last job. They never start another one."""
     call = '{"say": "lagi", "tool": "ingest", "args": {}}'
     model = ScriptedModel(call, call, call, call, call)
     service, jobs = _agent(
         settings, monkeypatch, model, channel=FakeChannel(), videos=[_video("V1")]
     )
+    _open(service)
     service.handle("abc", "tolong ambil transkripnya sekarang")
     for _ in range(4):
         last = service.handle("abc", advance=True)
         if last["job_id"] is None:
             break
         jobs.jobs[last["job_id"]].status = "done"
-    assert len(jobs.started) == 3
+    assert len(jobs.started) == 1
 
 
 COOKIES = (
@@ -580,3 +627,23 @@ def test_chat_history_is_empty_for_a_new_session(client) -> None:
     response = client.get("/api/chat/history")
     assert response.status_code == 200
     assert response.json()["messages"] == []
+
+
+def test_a_truncated_plan_keeps_the_sentence() -> None:
+    """The fast model can run out of budget mid-object; the words still count."""
+    plan = chat.parse_plan('{"say": "biasanya karena nabung dianggap sisa", "tool": nul')
+    assert plan is not None
+    assert plan["say"].startswith("biasanya")
+    assert plan["tool"] is None
+
+
+def test_plain_prose_becomes_the_answer() -> None:
+    plan = chat.parse_plan("biasanya bukan soal angkanya, tapi pemicunya")
+    assert plan is not None
+    assert plan["say"].startswith("biasanya")
+    assert plan["tool"] is None
+
+
+def test_prose_that_claims_work_is_refused() -> None:
+    """Saying 'gue ambil transkripnya' without calling the tool is a lie."""
+    assert chat.parse_plan("gue ambil transkripnya dulu ya") is None

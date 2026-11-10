@@ -134,10 +134,33 @@ Tools it can call:
 - `assemble` — compose the brief from what you said and run the pipeline
 
 Long work runs as a job and its log is appended to the same conversation. After a job ends,
-the result is fed back to the model so the next line answers what actually happened, not what
-was expected. Every turn is stored in `output/_chat/<session>.json`, so closing the tab loses
-nothing. Tool calls are capped at three per message, and a finished `assemble` will not
-restart itself.
+the result is read by the rules and the next line answers what actually happened, not what
+was expected, so the follow up costs no model call. Every turn is stored in
+`output/_chat/<session>.json`, so closing the tab loses nothing. A finished `assemble` will
+not restart itself.
+
+### Slash commands
+
+Typing `/` opens a menu of the things that need no model at all. Arrow keys or a tap pick
+one; Enter runs it. The list is defined once in `backend/skills.py` and served from
+`/api/skills`, so the menu and the chat cannot drift apart.
+
+| Command | What it does |
+|---|---|
+| `/channel <link\|@handle>` | read the channel's video tab into the library |
+| `/ingest [n]` | fetch transcripts for videos that have none |
+| `/naskah [n]` | run the pipeline on the brief built so far |
+| `/topik <sentence>` | set the topic |
+| `/audiens <who>` | set the audience |
+| `/brief` | show the brief that would run now |
+| `/status` | what this conversation has read |
+| `/blocked` | segments the critic refused on the last run |
+| `/doctor` | api key, database, soul, cookies |
+| `/cookies` | how to hand over a browser session |
+| `/reset` | forget the conversation |
+
+A conversation counts only the channel it opened. The library on disk is shared, so a new
+chat starts by asking for a link instead of announcing work it never did.
 
 ```bash
 # 1. a token, so a tunnel is not an open door
@@ -150,6 +173,12 @@ python tools/run_console.py          # 127.0.0.1:8811
 cloudflared tunnel --url http://127.0.0.1:8811
 # open the printed https://<name>.trycloudflare.com/?t=<token>
 ```
+
+Model roles are split on purpose. `router` answers the chat on `deepseek-v4.1-flash-ultrafast`
+(1.2s measured, 200 token budget); `writer` composes scripts on `deepseek-v4.1-flash` because
+nothing about that runs while you wait. Override either with `MODEL_ROUTER` / `MODEL_WRITER`.
+An empty answer from the fast model is retried once, and a truncated one is salvaged rather
+than thrown away.
 
 When the model is unavailable the console does not break: it falls back to a deterministic
 ladder (ask for the channel, then the topic, then ingest, then assemble) that reads URLs,

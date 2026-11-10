@@ -366,6 +366,89 @@ def fetch_videos(engine: Engine) -> list[Video]:
     ]
 
 
+def fetch_channel_by_id(engine: Engine, channel_id: str) -> Channel | None:
+    """One channel by its YouTube id, None when missing."""
+    with engine.connect() as conn:
+        row = (
+            conn.execute(select(channels_t).where(channels_t.c.channel_id == channel_id))
+            .mappings()
+            .first()
+        )
+    if row is None:
+        return None
+    return Channel(
+        channel_id=row["channel_id"],
+        name=row["name"],
+        handle=row["handle"],
+        url=row["url"],
+    )
+
+
+def fetch_channel_by_url(engine: Engine, url: str) -> Channel | None:
+    """Find a channel from whatever link or handle the user typed.
+
+    People paste `@handle`, the full URL, or the URL with `/videos` on the end. All
+    three have to land on the same row or the console forgets what it already read.
+    """
+    wanted = url.strip().rstrip("/")
+    bare = wanted.removeprefix("https://").removeprefix("http://")
+    bare = bare.removeprefix("www.").removesuffix("/videos").rstrip("/")
+    if not bare:
+        return None
+    for channel in fetch_channels(engine):
+        handle = channel.handle.lstrip("@").lower()
+        candidates = {
+            channel.channel_id.lower(),
+            channel.url.rstrip("/").replace("https://", "").replace("http://", "").lower(),
+            channel.url.rstrip("/").removesuffix("/videos").replace("https://", "").lower(),
+            handle,
+            f"@{handle}",
+            f"youtube.com/@{handle}",
+        }
+        if bare.lower().lstrip("@") == handle or bare.lower() in candidates:
+            return channel
+    return None
+
+
+def fetch_channels(engine: Engine) -> list[Channel]:
+    """Every channel in the library, oldest id first."""
+    with engine.connect() as conn:
+        rows = conn.execute(select(channels_t).order_by(channels_t.c.channel_id)).mappings().all()
+    return [
+        Channel(
+            channel_id=row["channel_id"],
+            name=row["name"],
+            handle=row["handle"],
+            url=row["url"],
+        )
+        for row in rows
+    ]
+
+
+def fetch_videos_for_channel(engine: Engine, channel_id: str) -> list[Video]:
+    """Only this channel's videos. A conversation counts what it actually read."""
+    with engine.connect() as conn:
+        rows = (
+            conn.execute(
+                select(videos_t)
+                .where(videos_t.c.channel_id == channel_id)
+                .order_by(videos_t.c.video_id)
+            )
+            .mappings()
+            .all()
+        )
+    return [
+        Video(
+            video_id=row["video_id"],
+            title=row["title"],
+            duration_s=row["duration_s"],
+            published_at=row["published_at"],
+            url=row["url"],
+        )
+        for row in rows
+    ]
+
+
 def fetch_video(engine: Engine, video_id: str) -> Video | None:
     """One video, None when missing."""
     with engine.connect() as conn:

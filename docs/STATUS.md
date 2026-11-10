@@ -8,7 +8,7 @@ The state of the repo today. Updated at the end of every phase.
 
 Phases 1–6 complete and verified. Phases 7 and 8 partly done: what remains is waiting on a real library and a golden set.
 
-`uv run check` is green: ruff, ruff format, pyright, 76 tests passing, 80% coverage.
+`uv run check` is green: ruff, ruff format, pyright, 176 tests passing, 81% coverage.
 
 ---
 
@@ -27,7 +27,7 @@ Phases 1–6 complete and verified. Phases 7 and 8 partly done: what remains is 
 | `eval/metrics.py` | Five metrics; the golden set is read only here |
 | `narathor/` | Typer CLI: soul, narrative, ingest, index, mine, script, report, eval, doctor, status, check |
 | `tools/build_site.py` | Static site generator for GitHub Pages |
-| `tests/` | 76 tests, none calling a model or the network |
+| `tests/` | 176 tests, none calling a model or the network |
 | `data/` | No real library yet. Tests use fixtures in `tests/fixtures.py` |
 
 ---
@@ -36,7 +36,7 @@ Phases 1–6 complete and verified. Phases 7 and 8 partly done: what remains is 
 
 | Metric | Target | Now |
 |---|---|---|
-| Tests passing | all | 76 |
+| Tests passing | all | 176 |
 | Coverage | >= 80% | 80% |
 | `pyright` | 0 errors | 0 |
 | `ruff` | clean | clean |
@@ -87,6 +87,12 @@ Not run. Waiting on a golden set and 10 identical `Combo`s.
 | 2026-11-10 | The chat is an agent loop with three tools, not a question ladder | A ladder answers the same way every time, which reads as a form with extra steps; an agent reads the situation and decides | `_turn` / `_think` / `_start_tool` in `backend/chat.py`; the ladder survives as the fallback when no model answers |
 | 2026-11-10 | A finished job is fed back to the model before the next line | Otherwise the console narrates what it expected instead of what happened | `_observe` turns a job into one plain sentence; the reply that follows is written from it |
 | 2026-11-10 | Tool calls capped at three per user message; a finished `assemble` cannot restart | An agent that loops on its own tool is a bill, not a feature | Two guards in `_execute`, covered by tests |
+| 2026-11-10 | A conversation counts only the channel it opened | The library on disk is shared across sessions, so counting all of it made a fresh chat announce ten videos it never read | `_counts(session)` and `fetch_videos_for_channel`; the start of a chat asks for a link instead of reporting numbers |
+| 2026-11-10 | Slash commands are a registry, not if-statements in the page | The menu and the answers must not drift apart, and every command must run with no model call | `backend/skills.py` is the single list; `GET /api/skills` feeds the menu; `_cmd_*` handlers answer |
+| 2026-11-10 | After a job, the next line comes from the rules, not the model | The provider costs 2 to 4 seconds; the job result is already a sentence, so a second call adds latency and nothing else | `_resume`; a channel job continues straight into ingest |
+| 2026-11-10 | The tagline sits in the header, not in the flow | In the flow it collided with the first line of the conversation | `ui.py`: header carries it; the flow starts empty |
+| 2026-11-10 | The chat routes on `deepseek-v4.1-flash-ultrafast`, the writer stays on `v4.1-flash` | The router is the only call between a keystroke and an answer; measured 1.2s against 3.2s for the same prompt, and the script quality does not depend on it | New `router` role with its own 200 token, 8 second budget; `MODEL_ROUTER` overrides it |
+| 2026-11-10 | An empty model answer is asked once more, damaged JSON is salvaged | Ultrafast returned an empty body roughly one time in six on the long agent prompt; a retry costs 1.2s, a lost answer costs the whole conversation | `_think` retries once; `parse_plan` recovers a truncated `say` and refuses prose that claims work |
 
 ---
 

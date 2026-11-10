@@ -10,6 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_MODELS: dict[str, str] = {
+    # The router reads one message and picks a move. It runs on the fastest model the
+    # provider offers, because this is the only call standing between a keystroke and
+    # an answer. The writer keeps the slower, better model.
+    "router": "deepseek/deepseek-v4.1-flash-ultrafast",
     "curator": "deepseek/deepseek-v4.1-flash",
     "matcher": "deepseek/deepseek-v4.1-flash",
     "writer": "deepseek/deepseek-v4.1-flash",
