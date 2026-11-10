@@ -1,0 +1,33 @@
+id: uang-masuk-dan-pergi-4047
+title: Uang masuk dan pergi
+learning_outcome: 'Setelah nonton, penonton paham satu hal: Uang masuk dan pergi.'
+thesis: Uang masuk dan pergi
+audience:
+  primary: pekerja muda
+  literacy_level: menengah
+  pain_points: []
+values_allowed:
+- transparansi
+- keterlacakan
+values_blocked: []
+register_level: 2
+tone:
+  target: santai
+  avoid:
+  - menggurui
+  - jargon
+seasonal_context:
+  as_of: '2026-11-10'
+  period: null
+  moments: []
+  trend_notes: ''
+sources:
+  channels:
+  - https://www.youtube.com/@channel-uji
+  recency_preference: any
+  min_duration_s: 180
+output:
+  scripts: 2
+  target_duration_s: 15
+  language: id
+  montages: 0

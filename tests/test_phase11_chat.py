@@ -178,6 +178,84 @@ def _chat(settings, monkeypatch: pytest.MonkeyPatch, **state: Any) -> tuple[chat
     return chat.Chat(settings=settings, engine=object(), jobs=jobs, llm=lambda _p: "{}"), jobs
 
 
+def _fast_chat(
+    settings, monkeypatch: pytest.MonkeyPatch, **state: Any
+) -> tuple[chat.Chat, FakeJobs, list[str]]:
+    """A chat whose model records every call, so the fast path can be proven silent."""
+    _patch_db(
+        monkeypatch,
+        channel=state.get("channel"),
+        videos=state.get("videos"),
+        transcripts=state.get("transcripts", 0),
+    )
+    calls: list[str] = []
+
+    def llm(prompt: str) -> str:
+        calls.append(prompt)
+        return "{}"
+
+    jobs = FakeJobs()
+    return (
+        chat.Chat(settings=settings, engine=object(), jobs=jobs, llm=llm),
+        jobs,
+        calls,
+    )
+
+
+def test_a_url_never_waits_for_the_model(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    service, jobs, calls = _fast_chat(settings, monkeypatch, channel=FakeChannel("@lama"))
+    answer = service.handle("abc", "coba https://www.youtube.com/@baru")
+    assert answer["job_kind"] == "channel"
+    assert calls == []
+    assert jobs.started[0]["kind"] == "channel"
+
+
+def test_a_greeting_is_answered_from_the_library(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    service, _jobs, calls = _fast_chat(
+        settings,
+        monkeypatch,
+        channel=FakeChannel(),
+        videos=[_video("VID-0001")],
+        transcripts=1,
+    )
+    answer = service.handle("abc", "halo")
+    assert "transkrip" in answer["reply"][0]
+    assert calls == []
+
+
+def test_a_spelled_out_brief_never_waits_for_the_model(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, jobs, calls = _fast_chat(
+        settings,
+        monkeypatch,
+        channel=FakeChannel(),
+        videos=[_video("VID-0001")],
+        transcripts=1,
+    )
+    answer = service.handle("abc", "bikin 2 naskah soal uang buat pekerja muda, tone santai")
+    assert answer["job_kind"] == "run"
+    assert calls == []
+    assert jobs.started[0]["kind"] == "run"
+
+
+def test_a_product_question_is_answered_without_the_model(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, _jobs, calls = _fast_chat(settings, monkeypatch, channel=FakeChannel())
+    answer = service.handle("abc", "ini bisa dipake buat apa?")
+    assert "naskah" in answer["reply"][0]
+    assert calls == []
+
+
+def test_an_open_question_still_reaches_the_model(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, _jobs, calls = _fast_chat(settings, monkeypatch, channel=FakeChannel())
+    service.handle("abc", "menurut kamu kenapa orang susah nabung?")
+    assert calls
+
+
 def test_first_message_asks_for_a_channel(settings, monkeypatch: pytest.MonkeyPatch) -> None:
     service, jobs = _chat(settings, monkeypatch)
     answer = service.handle("abc", "halo")
@@ -355,7 +433,7 @@ def test_parse_plan_rejects_prose() -> None:
 def test_agent_says_what_the_model_said(settings, monkeypatch: pytest.MonkeyPatch) -> None:
     model = ScriptedModel('{"say": "channel mana nih?", "tool": null, "args": {}}')
     service, jobs = _agent(settings, monkeypatch, model)
-    answer = service.handle("abc", "halo")
+    answer = service.handle("abc", "menurut kamu channel ini cocok buat topik apa?")
     assert answer["reply"] == ["channel mana nih?"]
     assert jobs.started == []
 
@@ -436,7 +514,7 @@ def test_agent_stops_after_three_tool_calls(settings, monkeypatch: pytest.Monkey
     service, jobs = _agent(
         settings, monkeypatch, model, channel=FakeChannel(), videos=[_video("V1")]
     )
-    service.handle("abc", "gas")
+    service.handle("abc", "tolong ambil transkripnya sekarang")
     for _ in range(4):
         last = service.handle("abc", advance=True)
         if last["job_id"] is None:

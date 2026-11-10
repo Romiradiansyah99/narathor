@@ -55,7 +55,9 @@ class ProviderModel:
             api_key=get_settings().api_key,  # pyright: ignore[reportArgumentType]
             base_url=BASE_URL,
             temperature=0.3,
-            max_retries=1,
+            max_retries=0,
+            timeout=10.0,
+            max_completion_tokens=500,
             default_headers={"User-Agent": USER_AGENT, "X-Title": "Narathor"},
         )
 

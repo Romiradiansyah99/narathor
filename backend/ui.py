@@ -33,9 +33,10 @@ header{padding:14px 18px 0;font-size:11px;letter-spacing:.32em;text-transform:up
 .turn.block{color:var(--ink);font-size:13.5px;line-height:1.85;border-left:2px solid var(--rule);
 padding-left:14px;margin-left:1px}
 .turn.block .cite{color:#7a7a7a}
-.wait{color:#6f6f6f;font-size:12.5px}
-.wait::after{content:"";display:inline-block;width:7px;height:13px;background:#8d8d8d;
+.turn.typing{color:#6f6f6f}
+.turn.typing::after{content:"";display:inline-block;width:7px;height:13px;background:#8d8d8d;
 vertical-align:-2px;margin-left:6px;animation:b 1.05s steps(1) infinite}
+.wait{color:#6f6f6f;font-size:12.5px}
 @keyframes b{0%,49%{opacity:1}50%,100%{opacity:0}}
 form{border-top:1px solid var(--rule);padding:12px 18px calc(12px + env(safe-area-inset-bottom));
 display:flex;gap:10px;align-items:flex-start;background:var(--bg)}
@@ -165,9 +166,12 @@ async function poll(jobId) {{
 async function send(text) {{
   if (running) return;
   setBusy(true);
+  prompt.value = '';
   userTurn(text);
+  const dots = turn('', 'typing');
   try {{
     let data = await post({{message: text}});
+    dots.remove();
     (data.reply || []).forEach(line => turn(line, 'bot'));
     while (data.job_id) {{
       const job = await poll(data.job_id);
@@ -176,6 +180,7 @@ async function send(text) {{
       (data.reply || []).forEach(line => turn(line, 'bot'));
     }}
   }} catch (err) {{
+    dots.remove();
     turn('putus. cek koneksi, lalu kirim ulang.', 'log');
   }} finally {{
     setBusy(false);

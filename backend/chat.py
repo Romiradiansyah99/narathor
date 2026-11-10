@@ -37,11 +37,71 @@ COUNT_RE = re.compile(r"\b(\d{1,2})\s*(?:naskah|script|naskahnya|video|vid)\b", 
 DURATION_RE = re.compile(r"\b(\d{1,2})\s*(?:detik|detiknya|sec|second|s)\b", re.I)
 
 RESET_WORDS = {"reset", "ulang", "mulai ulang", "dari awal", "batal", "clear"}
+ACTION_VERBS = {
+    "bikin",
+    "bikinin",
+    "buatin",
+    "rakit",
+    "rakitin",
+    "produksi",
+    "tulis",
+    "tulisin",
+    "susun",
+    "susunin",
+    "generate",
+    "jalanin",
+    "kerjain",
+    "eksekusi",
+}
+ACKS = {
+    "gas",
+    "lanjut",
+    "oke",
+    "ok",
+    "ya",
+    "sip",
+    "ayo",
+    "jalan",
+    "jalanin",
+    "boleh",
+    "mantap",
+    "go",
+}
+GREETINGS = {
+    "halo",
+    "hai",
+    "hi",
+    "hallo",
+    "pagi",
+    "siang",
+    "malam",
+    "test",
+    "tes",
+    "assalamualaikum",
+    "p",
+    "ping",
+}
 TOPIC_MARKERS = ("soal", "tentang", "tema", "topik", "bahas", "angkat")
 AUDIENCE_MARKERS = ("buat", "untuk", "target", "audience", "penonton")
 TONE_MARKERS = ("tone", "gaya", "nada")
 
 DEFAULT_TONE = "santai, langsung, tanpa menggurui"
+CANNED_ANSWERS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (
+        ("buat apa", "bisa apa", "kegunaan", "fungsinya", "ini apa", "ini apaan"),
+        "gue bikin naskah short dari video channel kamu. tiap kalimat nempel ke detik sumbernya, "
+        "jadi nggak ada klaim tanpa asal. mulai dari link channel, terus kasih topik satu kalimat.",
+    ),
+    (
+        ("cara pakai", "gimana pakai", "gimana caranya", "caranya gimana", "how to"),
+        "tiga langkah. tempel link channel, kasih topik, gue rakit naskahnya. "
+        "kalau youtube nolak transkrip, tempel cookies.txt dari browser kamu di kolom ini.",
+    ),
+    (
+        ("makasih", "thanks", "thx", "nice", "mantap"),
+        "santai. kalau mau lanjut, kasih topik atau link channel.",
+    ),
+)
 DEFAULT_AVOID = ["menggurui", "jargon"]
 DEFAULT_DURATION = 15
 DEFAULT_COUNT = 3
@@ -149,6 +209,7 @@ class Session:
     pending_job: str | None = None
     tool_calls: int = 0
     notes: list[str] = field(default_factory=list)
+    last_text: str = ""
     brief_id: str | None = None
     updated_at: str = ""
 
@@ -164,6 +225,7 @@ class Session:
             "pending_job": self.pending_job,
             "tool_calls": self.tool_calls,
             "notes": self.notes,
+            "last_text": self.last_text,
             "brief_id": self.brief_id,
             "updated_at": self.updated_at,
         }
@@ -181,6 +243,7 @@ class Session:
             pending_job=payload.get("pending_job"),
             tool_calls=int(payload.get("tool_calls") or 0),
             notes=list(payload.get("notes") or []),
+            last_text=str(payload.get("last_text") or ""),
             brief_id=payload.get("brief_id"),
             updated_at=str(payload.get("updated_at") or ""),
         )
@@ -592,12 +655,14 @@ class Chat:
                 session.tool_calls = 0
                 session.ingest_tried = False
                 session.notes = []
+                session.last_text = ""
                 session.messages.append({"role": "user", "text": "(cookies youtube ditempel)"})
                 prefix = [f"cookies masuk, disimpan di {path.name}. gue coba ambil transkrip lagi."]
             else:
                 session.slots.update(understand(text, None))
                 session.tool_calls = 0
                 session.notes = []
+                session.last_text = text
                 if "coba lagi" in text.lower():
                     session.ingest_tried = False
                     session.channel_fetched = False
@@ -614,6 +679,7 @@ class Chat:
                 "job_kind": job.kind if job else None,
             }
         elif advance and session.pending_job:
+            session.last_text = ""
             observation = self._observe(session)
             session.pending_job = None
             session.notes.append(observation)
@@ -631,13 +697,70 @@ class Chat:
     # -- the agent ------------------------------------------------------ #
 
     def _turn(self, session: Session) -> tuple[list[str], Job | None]:
-        """Let the model decide. Fall back to the rule ladder when it cannot."""
+        """Answer from the rules when the message is unambiguous, ask the model otherwise."""
+        cheap = self._cheap(session)
+        if cheap is not None:
+            return cheap
         llm = self.model()
         if llm is not None:
             plan = self._think(session, llm)
             if plan is not None:
                 return self._execute(session, plan)
         return self._next(session)
+
+    def _cheap(self, session: Session) -> tuple[list[str], Job | None] | None:
+        """The fast path: a URL, an acknowledgement, a greeting, or a brief already spelled out.
+
+        The provider takes two to four seconds for a one-word answer, so anything the rules
+        can settle must never wait for it.
+        """
+        text = session.last_text.strip()
+        if not text:
+            return None
+        lowered = text.lower()
+        words = re.findall(r"[a-z]+", lowered)
+        if lowered in GREETINGS:
+            return ([self._status_line()], None)
+        canned = self._canned(lowered)
+        if canned is not None:
+            return ([canned], None)
+        rules = extract_rules(text)
+        if rules.get("channel_url"):
+            return self._next(session)
+        if words and set(words) <= ACKS:
+            return self._next(session)
+        brief_ready = rules.get("topic") and any(
+            rules.get(key) for key in ("count", "tone", "audience")
+        )
+        if brief_ready and set(words[:4]) & ACTION_VERBS:
+            return self._next(session)
+        return None
+
+    def _status_line(self) -> str:
+        """A greeting answered from the library itself, with no model call."""
+        channel, videos, transcripts = self._counts()
+        if channel is None:
+            return "gue siap. mulai dari channel youtube kamu: tempel link atau @handle-nya."
+        if transcripts:
+            return (
+                f"{videos} video di pustaka, {transcripts} transkrip siap. "
+                "mau bikin naskah soal apa?"
+            )
+        return (
+            f"{videos} video di pustaka, transkripnya belum ada. "
+            "kasih topik, nanti gue ambil transkripnya dulu."
+        )
+
+    def _canned(self, lowered: str) -> str | None:
+        """Questions about the product itself, answered without waiting for a model."""
+        for needles, answer in CANNED_ANSWERS:
+            if any(needle in lowered for needle in needles):
+                return answer
+        if any(
+            needle in lowered for needle in ("status", "udah ada apa", "progres", "gimana kabar")
+        ):
+            return self._status_line()
+        return None
 
     def _think(self, session: Session, llm: Callable[[str], str]) -> dict[str, Any] | None:
         """One model call, one plan. A dead model is a missing plan, not a crash."""

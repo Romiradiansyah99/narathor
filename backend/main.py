@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -365,6 +366,24 @@ def create_app(
     app.state.jobs = Registry(log_dir=resolved.output_dir / "_jobs")
     app.state.chat = chat.Chat(resolved, eng, app.state.jobs)
     app.include_router(router)
+
+    def warm() -> None:
+        """Pay the provider's connection setup once, off the request path."""
+        import sys
+
+        if os.environ.get("NARATHOR_CHAT_MODEL", "").strip().lower() in {"off", "0", "no"}:
+            return
+        if "pytest" in sys.modules:
+            return
+        try:
+            app.state.chat.model()
+            from agent.models import for_role
+
+            for_role("matcher").complete("ok", system="balas: ok")
+        except Exception:
+            pass
+
+    threading.Thread(target=warm, daemon=True, name="warm-model").start()
 
     token = os.environ.get("NARATHOR_UI_TOKEN", "").strip()
 
