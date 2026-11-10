@@ -647,3 +647,72 @@ def test_plain_prose_becomes_the_answer() -> None:
 def test_prose_that_claims_work_is_refused() -> None:
     """Saying 'gue ambil transkripnya' without calling the tool is a lie."""
     assert chat.parse_plan("gue ambil transkripnya dulu ya") is None
+
+
+# --------------------------------------------------------------------------- #
+# A failed fetch must not brick the conversation
+# --------------------------------------------------------------------------- #
+
+
+def _fail_last_job(jobs: FakeJobs, job_id: str, error: str) -> None:
+    """Turn the job the chat just started into a failure."""
+    job = jobs.jobs[job_id]
+    job.status = "failed"
+    job.error = error
+
+
+def test_a_failed_channel_does_not_brick_the_next_link(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The old latch set channel_fetched before the job ran, so a second link was ignored."""
+    service, jobs, _calls = _fast_chat(settings, monkeypatch)
+    first = service.handle("abc", "https://youtube.com/@salah")
+    assert first["job_kind"] == "channel"
+    _fail_last_job(jobs, first["job_id"], "ChannelError: youtube did not answer")
+
+    service.handle("abc", advance=True)
+    second = service.handle("abc", "https://youtube.com/@bener")
+    assert second["job_kind"] == "channel"
+    assert len(jobs.started) == 2
+
+
+def test_a_failed_channel_says_why_it_failed(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    service, jobs, _calls = _fast_chat(settings, monkeypatch)
+    answer = service.handle("abc", "https://youtube.com/@salah")
+    _fail_last_job(
+        jobs, answer["job_id"], "ChannelError: youtube did not answer for x: HTTP Error 429"
+    )
+    reply = " ".join(service.handle("abc", advance=True)["reply"])
+    assert "kebanyakan permintaan" in reply
+    assert "coba link lain" in reply
+
+
+def test_a_watch_link_is_named_as_a_watch_link(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A video link is the mistake people make; 'link-nya salah' does not help."""
+    service, jobs, calls = _fast_chat(settings, monkeypatch)
+    reply = service.handle("abc", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")["reply"]
+    assert "link video" in " ".join(reply)
+    assert jobs.started == []
+    assert calls == []
+
+
+def test_the_same_link_is_not_hammered_automatically(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resuming after a failure must not silently retry the same URL forever."""
+    service, jobs, _calls = _fast_chat(settings, monkeypatch)
+    answer = service.handle("abc", "https://youtube.com/@salah")
+    _fail_last_job(jobs, answer["job_id"], "ChannelError: too many requests")
+    service.handle("abc", advance=True)
+    service.handle("abc", advance=True)
+    assert len(jobs.started) == 1
+
+
+def test_switching_channel_forgets_the_old_one(settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A channel_id from an earlier turn used to answer for the new link."""
+    service, jobs, _calls = _fast_chat(
+        settings, monkeypatch, channel=FakeChannel("@lama"), videos=[_video("V1")]
+    )
+    _open(service)
+    service.handle("abc", "https://youtube.com/@baru")
+    assert [entry["kind"] for entry in jobs.started][-1] == "channel"

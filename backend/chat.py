@@ -33,6 +33,9 @@ from briefs import load as briefs_load
 URL_RE = re.compile(r"https?://(?:www\.|m\.|music\.)?youtube\.com/[^\s<>\"']+", re.I)
 BARE_HOST_RE = re.compile(r"\byoutube\.com/[^\s<>\"']+", re.I)
 HANDLE_RE = re.compile(r"(?:^|[\s(])@([A-Za-z0-9._-]{2,})")
+VIDEO_LINK_RE = re.compile(
+    r"(?:youtube\.com/(?:watch|shorts|live|embed|playlist)|youtu\.be/)", re.I
+)
 COUNT_RE = re.compile(r"\b(\d{1,2})\s*(?:naskah|script|naskahnya|video|vid)\b", re.I)
 DURATION_RE = re.compile(r"\b(\d{1,2})\s*(?:detik|detiknya|sec|second|s)\b", re.I)
 
@@ -220,7 +223,8 @@ class Session:
     sid: str
     slots: dict[str, Any] = field(default_factory=dict)
     messages: list[dict[str, str]] = field(default_factory=list)
-    channel_fetched: bool = False
+    attempted_url: str = ""
+    last_channel_error: str = ""
     ingest_tried: bool = False
     ran: bool = False
     pending_job: str | None = None
@@ -236,7 +240,8 @@ class Session:
             "sid": self.sid,
             "slots": self.slots,
             "messages": self.messages,
-            "channel_fetched": self.channel_fetched,
+            "attempted_url": self.attempted_url,
+            "last_channel_error": self.last_channel_error,
             "ingest_tried": self.ingest_tried,
             "ran": self.ran,
             "pending_job": self.pending_job,
@@ -254,7 +259,8 @@ class Session:
             sid=str(payload.get("sid") or uuid.uuid4().hex[:16]),
             slots=dict(payload.get("slots") or {}),
             messages=list(payload.get("messages") or []),
-            channel_fetched=bool(payload.get("channel_fetched")),
+            attempted_url=str(payload.get("attempted_url") or ""),
+            last_channel_error=str(payload.get("last_channel_error") or ""),
             ingest_tried=bool(payload.get("ingest_tried")),
             ran=bool(payload.get("ran")),
             pending_job=payload.get("pending_job"),
@@ -315,6 +321,51 @@ def _url_from(text: str) -> str | None:
     match = HANDLE_RE.search(text)
     if match:
         return f"https://www.youtube.com/@{match.group(1)}"
+    return None
+
+
+def _same_channel(left: str, right: str) -> bool:
+    """Two links point at the same channel even when one carries /videos."""
+
+    def key(value: str) -> str:
+        text = value.strip().lower().rstrip("/")
+        for prefix in ("https://", "http://"):
+            text = text.removeprefix(prefix)
+        text = text.removeprefix("www.")
+        return text.removesuffix("/videos").rstrip("/")
+
+    return bool(left) and key(left) == key(right)
+
+
+def _short_reason(error: str) -> str:
+    """One clause a human can act on, not a wall of yt-dlp output."""
+    text = error.split("\n")[0].strip()
+    lowered = text.lower()
+    if "404" in text:
+        return "channel-nya nggak ada, youtube balas 404"
+    if "429" in text or "too many requests" in lowered:
+        return "youtube nolak karena kebanyakan permintaan, coba lagi nanti"
+    if "confirm you" in lowered or "sign in" in lowered or "bot" in lowered:
+        return "youtube minta login, ini bot check dari ip server"
+    if "timed out" in lowered or "timeout" in lowered:
+        return "koneksi ke youtube timeout"
+    text = text.replace("ChannelError: ", "").strip()
+    text = re.sub(r"^youtube did not answer for \S+: ", "", text)
+    text = re.sub(r"^\w*Error: ", "", text)
+    return text[:160]
+
+
+def _link_problem(url: str) -> str | None:
+    """Say why a link cannot be a channel before yt-dlp wastes a round trip.
+
+    A watch link is the mistake people actually make, and "coba link lain" is a
+    useless answer to it: the link is fine, it is just the wrong kind of page.
+    """
+    if VIDEO_LINK_RE.search(url):
+        return (
+            "itu link video, bukan link channel. gue butuh halaman channel-nya: "
+            "youtube.com/@nama-channel"
+        )
     return None
 
 
@@ -692,13 +743,17 @@ class Chat:
                 session.messages.append({"role": "user", "text": "(cookies youtube ditempel)"})
                 prefix = [f"cookies masuk, disimpan di {path.name}. gue coba ambil transkrip lagi."]
             else:
-                session.slots.update(understand(text, None))
+                incoming = understand(text, None)
+                session.slots.update(incoming)
                 session.tool_calls = 0
                 session.notes = []
                 session.last_text = text
+                if incoming.get("channel_url") or "coba lagi" in text.lower():
+                    # An explicit link or an explicit retry is permission to hit YouTube again.
+                    session.attempted_url = ""
+                    session.last_channel_error = ""
                 if "coba lagi" in text.lower():
                     session.ingest_tried = False
-                    session.channel_fetched = False
                 session.messages.append({"role": "user", "text": text})
             session.ran = False
             reply, job = self._turn(session)
@@ -863,7 +918,8 @@ class Chat:
             if not url:
                 return None, "link channel-nya belum ada, tempel dulu."
             session.slots["channel_url"] = url
-            session.channel_fetched = True
+            session.attempted_url = url
+            session.last_channel_error = ""
             return self._channel_job(session, url), None
 
         if tool == "ingest":
@@ -906,7 +962,10 @@ class Chat:
             return "hasil alat tidak ketemu, session ini kehilangan job-nya."
         result = job.result or {}
         if job.status == "failed":
-            return f"{job.kind} gagal: {job.error or 'tanpa pesan'}"
+            reason = job.error or "tanpa pesan"
+            if job.kind == "channel":
+                session.last_channel_error = _short_reason(reason)
+            return f"{job.kind} gagal: {reason}"
         if job.kind == "channel":
             channel_id = str(result.get("channel_id") or "")
             if channel_id:
@@ -963,9 +1022,13 @@ class Chat:
         if not arg:
             return (["pakai: /channel https://youtube.com/@handle"], None)
         url = _url_from(arg) or arg.strip()
+        problem = _link_problem(url)
+        if problem:
+            return ([problem], None)
         session.slots["channel_url"] = url
         session.slots.pop("channel_id", None)
-        session.channel_fetched = True
+        session.attempted_url = url
+        session.last_channel_error = ""
         session.ingest_tried = False
         session.ran = False
         return (["gue baca dulu daftar video channel itu."], self._channel_job(session, url))
@@ -1110,6 +1173,16 @@ class Chat:
         note = session.notes[-1] if session.notes else ""
         _channel, videos, transcripts = self._counts(session)
         if " gagal: " in note:
+            kind = note.split(" gagal: ", 1)[0].strip()
+            if kind == "channel" and session.last_channel_error:
+                return (
+                    [
+                        "channel-nya gagal gue baca.",
+                        f"alasannya: {session.last_channel_error}",
+                        "coba link lain, atau ketik /doctor buat cek koneksi youtube.",
+                    ],
+                    None,
+                )
             return ([note], None)
         if note.startswith("fetch_channel selesai"):
             if videos == 0:
@@ -1158,18 +1231,23 @@ class Chat:
         return channel, len(videos), transcripts
 
     def _channel(self, session: Session) -> Any:
-        """The channel this conversation opened, None before the first link."""
-        channel_id = str(session.slots.get("channel_id") or "").strip()
-        if channel_id:
-            found = db.fetch_channel_by_id(self.engine, channel_id)
-            if found is not None:
-                return found
+        """The channel this conversation opened, None before the first link.
+
+        The URL wins over the stored id. Pasting a second channel used to keep
+        answering with the first one, because a channel_id from an earlier turn
+        was trusted over the link the user just sent.
+        """
         url = str(session.slots.get("channel_url") or "").strip()
         if url:
             found = db.fetch_channel_by_url(self.engine, url)
             if found is not None:
                 session.slots["channel_id"] = found.channel_id
-            return found
+                return found
+            session.slots.pop("channel_id", None)
+            return None
+        channel_id = str(session.slots.get("channel_id") or "").strip()
+        if channel_id:
+            return db.fetch_channel_by_id(self.engine, channel_id)
         return None
 
     def _next(self, session: Session) -> tuple[list[str], Job | None]:
@@ -1188,16 +1266,54 @@ class Chat:
                 None,
             )
 
-        if not session.channel_fetched and (channel is None or channel.url != url):
-            job = self._channel_job(session, url)
-            session.channel_fetched = True
-            return (["siap, gue baca dulu daftar video di channel itu."], job)
+        problem = _link_problem(url)
+        if problem:
+            return ([problem], None)
 
-        if channel is None or videos == 0:
+        from ingest.channel import ChannelError, normalize
+
+        try:
+            target = normalize(url)
+        except ChannelError:
             return (
                 [
-                    "channel-nya nggak kebaca. bisa jadi link-nya salah atau videonya kosong.",
-                    "coba tempel link lain, format youtube.com/@handle.",
+                    "link itu nggak kebaca sebagai channel youtube.",
+                    "format yang bisa gue pakai: youtube.com/@nama-channel",
+                ],
+                None,
+            )
+        session.slots["channel_url"] = target
+
+        channel = self._channel(session)
+        if channel is not None and not _same_channel(channel.url, target):
+            # The user moved to another channel: the old one must stop answering.
+            session.slots.pop("channel_id", None)
+            channel = None
+
+        if channel is None:
+            if session.attempted_url != target:
+                session.attempted_url = target
+                session.last_channel_error = ""
+                return (
+                    ["siap, gue baca dulu daftar video di channel itu."],
+                    self._channel_job(session, target),
+                )
+            lines = ["channel itu udah gue coba, hasilnya kosong."]
+            if session.last_channel_error:
+                lines.append(f"alasannya: {session.last_channel_error}")
+            lines.extend(
+                [
+                    "tempel link channel lain, atau ketik /doctor buat cek koneksi youtube.",
+                    "kalau mau gue ulang link yang sama, bilang 'coba lagi'.",
+                ]
+            )
+            return (lines, None)
+
+        if videos == 0:
+            return (
+                [
+                    "channel-nya kebaca, tapi daftar videonya kosong.",
+                    "coba channel lain, atau tab /videos yang publik.",
                 ],
                 None,
             )
